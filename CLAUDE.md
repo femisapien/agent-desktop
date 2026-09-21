@@ -4,18 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Common Commands
 
+Every platform adapter compiles on its own OS only, so an unscoped `cargo build`,
+`cargo test --workspace` or `cargo clippy --all-targets` fails on every host: the
+workspace names all three. `.githooks/pre-commit` picks the host's package set;
+`HOST_PKGS` below is the macOS one.
+
 ```bash
-cargo build                                    # Debug build
-cargo build --release                          # Release build (<15MB target)
-cargo test --workspace                         # Run every test (lib, binary, and integration targets)
-cargo test --lib --workspace                   # Library unit tests only; SKIPS the agent-desktop binary crate
+HOST_PKGS="-p agent-desktop-core -p agent-desktop-macos -p agent-desktop-linux -p agent-desktop -p agent-desktop-ffi"
+
+cargo build $HOST_PKGS                         # Debug build
+cargo build --release -p agent-desktop         # Release build (<15MB target)
+cargo test $HOST_PKGS                          # Run every test (lib, binary, and integration targets)
+cargo test $HOST_PKGS --lib                    # Library unit tests only; SKIPS the agent-desktop binary crate
 cargo test -p agent-desktop                    # Binary crate tests (CLI contract, dispatch, batch, policy)
 cargo test --lib -p agent-desktop-core         # Test core crate only
 cargo test --lib -p agent-desktop-macos        # Test macOS crate only
-cargo test test_name                           # Run a single test by name
+cargo test $HOST_PKGS test_name                # Run a single test by name
 cargo check -p agent-desktop-core --all-targets --target x86_64-pc-windows-msvc  # Core must cross-compile
 cargo check -p agent-desktop-core --all-targets --target x86_64-unknown-linux-gnu
-cargo clippy --all-targets -- -D warnings      # Lint (must pass, zero warnings)
+cargo clippy $HOST_PKGS --all-targets -- -D warnings   # Lint (must pass, zero warnings)
 cargo fmt --all -- --check                     # Format check
 cargo fmt --all                                # Auto-format
 cargo tree -p agent-desktop-core               # Verify no platform crate leaks (CI enforces)
