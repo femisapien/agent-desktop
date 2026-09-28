@@ -121,7 +121,7 @@ pub(crate) fn dispatch_resolved(
     let action_name = request.action.name();
     let raises_surface = request.action.may_raise_surface();
     let presentation_action = request.action.clone();
-    presentation::before_dispatch(&final_target, &preflight, lease);
+    presentation::before_dispatch(&final_target, &preflight, &presentation_action, lease);
     let dispatch_result =
         crate::execute_verified_action(final_target.adapter, final_target.handle, request, lease);
     presentation::after_dispatch(

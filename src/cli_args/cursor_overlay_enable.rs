@@ -32,9 +32,9 @@ impl CursorOverlayEnableArgs {
             self.label.clone(),
             self.max_words.unwrap_or(6),
         )
-        .and_then(|config| config.with_style(self.style.to_core()))
-        .and_then(|config| config.with_motion(self.motion.to_core()))
-        .map_err(Into::into)
+        .map_err(agent_desktop_core::AppError::from)
+        .and_then(|config| Ok(config.with_style(self.style.to_core()?)?))
+        .and_then(|config| Ok(config.with_motion(self.motion.to_core())?))
     }
 }
 

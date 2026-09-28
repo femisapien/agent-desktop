@@ -135,8 +135,8 @@ fn handle(control: &CursorOverlayControl, state: &mut OverlayState) -> Result<bo
     if control.is_disable() {
         return Ok(false);
     }
-    if absorb_settings(control, state) {
-        bridge::apply_style(&state.style);
+    if let Some(image_changed) = absorb_settings(control, state) {
+        bridge::apply_style(&state.style, image_changed);
     }
     if control.is_hide() {
         bridge::hide();
@@ -162,18 +162,14 @@ fn handle(control: &CursorOverlayControl, state: &mut OverlayState) -> Result<bo
     Ok(true)
 }
 
-fn absorb_settings(control: &CursorOverlayControl, state: &mut OverlayState) -> bool {
+fn absorb_settings(control: &CursorOverlayControl, state: &mut OverlayState) -> Option<bool> {
     if let Some(motion) = control.motion() {
         state.motion = motion.clone();
     }
     if control.is_enable() {
         state.moves = 0;
     }
-    let Some(style) = control.style() else {
-        return false;
-    };
-    state.style = style.clone();
-    true
+    absorb_style(control, state)
 }
 
 fn advance_moves(control: &CursorOverlayControl, state: &mut OverlayState) {
@@ -183,6 +179,13 @@ fn advance_moves(control: &CursorOverlayControl, state: &mut OverlayState) {
     {
         state.moves = state.moves.wrapping_add(1);
     }
+}
+
+fn absorb_style(control: &CursorOverlayControl, state: &mut OverlayState) -> Option<bool> {
+    let style = control.style()?;
+    let image_changed = state.style.images() != style.images();
+    state.style = style.clone();
+    Some(image_changed)
 }
 
 fn apply_landing_memory(
@@ -367,3 +370,7 @@ mod tests;
 #[cfg(test)]
 #[path = "child_motion_tests.rs"]
 mod motion_tests;
+
+#[cfg(test)]
+#[path = "child_image_tests.rs"]
+mod image_tests;

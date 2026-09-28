@@ -168,6 +168,10 @@ fn enabled_cursor_moves_before_dispatch_then_clicks_after_it() {
         "the cursor sets off before the action runs"
     );
     assert!(travel.target().is_none());
+    assert!(
+        !travel.is_pointer(),
+        "clicking into a text field keeps the arrow"
+    );
     assert_eq!(click.destination(), &center);
     assert!(
         click.is_click(),

@@ -45,7 +45,7 @@ pub(crate) fn dispatch(
                 CursorOverlayControl::enable(session_id.to_owned(), config.style().clone())
                     .with_motion(config.motion().clone());
             (
-                cursor_overlay::CursorOverlayAction::Enable(config),
+                cursor_overlay::CursorOverlayAction::Enable(Box::new(config)),
                 (!multi_agent).then_some(control),
             )
         }

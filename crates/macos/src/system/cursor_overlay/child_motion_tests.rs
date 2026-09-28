@@ -31,14 +31,14 @@ fn present(instruction: CursorOverlayInstruction) -> CursorOverlayControl {
 fn motion_from_a_control_reaches_the_renderer_state() {
     let mut state = OverlayState::default();
     let control = present(travel(Point { x: 10.0, y: 10.0 }));
-    assert!(absorb_settings(&control, &mut state));
+    assert!(absorb_settings(&control, &mut state).is_some());
     assert_eq!(state.motion, tuned());
     let enable = CursorOverlayControl::enable("run".into(), Default::default());
-    assert!(absorb_settings(&enable, &mut state));
+    assert!(absorb_settings(&enable, &mut state).is_some());
     assert!(state.motion.is_default());
     let hide = CursorOverlayControl::hide("run".into());
     state.motion = tuned();
-    assert!(!absorb_settings(&hide, &mut state));
+    assert!(absorb_settings(&hide, &mut state).is_none());
     assert_eq!(state.motion, tuned());
 }
 
