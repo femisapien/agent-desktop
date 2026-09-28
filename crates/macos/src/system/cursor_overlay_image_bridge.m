@@ -28,6 +28,7 @@ static const uint8_t ADPointerSlot = 1;
 static __strong NSArray<ADCursorImageSlot *> *ADImageSlotList = nil;
 static __strong CALayer *ADImageLayer = nil;
 static uint8_t ADImageShown = 0;
+static uint64_t ADImageSelections = 0;
 
 static ADCursorImageSlot *ADImageSlot(uint8_t slot) {
     if (ADImageSlotList == nil) {
@@ -232,10 +233,29 @@ void ADPointerImageApply(NSWindow *window, CALayer *pointer) {
 }
 
 void ADPointerImageSelect(NSWindow *window, CALayer *pointer, bool pointing) {
+    ADImageSelections += 1;
     uint8_t next = pointing ? ADPointerSlot : ADArrowSlot;
     if (next == ADImageShown) {
         return;
     }
     ADImageShown = next;
     ADPointerImageApply(window, pointer);
+}
+
+void ADPointerImageRelease(NSWindow *window, CALayer *pointer, double seconds) {
+    if (ADImageShown != ADPointerSlot) {
+        return;
+    }
+    uint64_t scheduled = ADImageSelections;
+    __weak NSWindow *weakWindow = window;
+    __weak CALayer *weakPointer = pointer;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(seconds * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+                       NSWindow *strongWindow = weakWindow;
+                       CALayer *strongPointer = weakPointer;
+                       if (scheduled == ADImageSelections && strongWindow != nil &&
+                           strongPointer != nil) {
+                           ADPointerImageSelect(strongWindow, strongPointer, false);
+                       }
+                   });
 }

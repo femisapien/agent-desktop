@@ -22,13 +22,19 @@ fn travel_departs_as_the_arrow_and_arrives_as_the_pointer_only_when_asked() {
 }
 
 #[test]
-fn drags_use_the_arrow_and_effects_keep_the_current_image() {
+fn drags_use_the_arrow_and_effects_return_to_it() {
     assert_eq!(
         pointer_flags(&instruction(CursorPhase::Drag, true)),
         ARROW_ON_DEPARTURE
     );
-    assert_eq!(pointer_flags(&instruction(CursorPhase::Effect, true)), 0);
-    assert_eq!(pointer_flags(&instruction(CursorPhase::Effect, false)), 0);
+    assert_eq!(
+        pointer_flags(&instruction(CursorPhase::Effect, true)),
+        ARROW_AFTER_EFFECT
+    );
+    assert_eq!(
+        pointer_flags(&instruction(CursorPhase::Effect, false)),
+        ARROW_AFTER_EFFECT
+    );
 }
 
 #[test]
@@ -38,6 +44,7 @@ fn pointer_flags_do_not_collide_with_render_flags() {
         HIGHLIGHT,
         POINT_ON_ARRIVAL,
         ARROW_ON_DEPARTURE,
+        ARROW_AFTER_EFFECT,
     ];
     for (index, flag) in all.iter().enumerate() {
         for other in &all[index + 1..] {

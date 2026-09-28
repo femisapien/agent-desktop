@@ -8,6 +8,7 @@ const REDUCE_MOTION: u8 = 1 << 2;
 const HIGHLIGHT: u8 = 1 << 3;
 const POINT_ON_ARRIVAL: u8 = 1 << 4;
 const ARROW_ON_DEPARTURE: u8 = 1 << 5;
+const ARROW_AFTER_EFFECT: u8 = 1 << 6;
 const ARROW_SLOT: u8 = 0;
 const POINTER_SLOT: u8 = 1;
 
@@ -176,7 +177,7 @@ pub(super) fn apply_style(style: &CursorOverlayStyle, image_changed: bool) {
 
 fn pointer_flags(instruction: &CursorOverlayInstruction) -> u8 {
     match instruction.phase() {
-        CursorPhase::Effect => 0,
+        CursorPhase::Effect => ARROW_AFTER_EFFECT,
         CursorPhase::Drag => ARROW_ON_DEPARTURE,
         CursorPhase::Travel if instruction.is_pointer() => ARROW_ON_DEPARTURE | POINT_ON_ARRIVAL,
         CursorPhase::Travel => ARROW_ON_DEPARTURE,

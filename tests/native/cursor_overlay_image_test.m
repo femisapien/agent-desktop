@@ -96,6 +96,19 @@ int main(void) {
         ADPointerImageSelect(window, pointer, false);
         require(pointer.hidden && near(ADImageLayer.bounds.size.width, 20.0),
                 "departure must switch back to the arrow image");
+        ADPointerImageSelect(window, pointer, true);
+        ADPointerImageRelease(window, pointer, 0.05);
+        [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+        require(near(ADImageLayer.bounds.size.width, 20.0),
+                "after an action's effect the pointer must return to the arrow");
+        ADPointerImageSelect(window, pointer, true);
+        ADPointerImageRelease(window, pointer, 0.05);
+        ADPointerImageSelect(window, pointer, false);
+        ADPointerImageSelect(window, pointer, true);
+        [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+        require(near(ADImageLayer.bounds.size.width, 26.0),
+                "a release scheduled before a newer arrival must not hide that arrival's pointer");
+        ADPointerImageSelect(window, pointer, false);
         agent_desktop_cursor_overlay_image(0, NULL, 0.0, 0.0);
         ADPointerImageApply(window, pointer);
         require(!pointer.hidden && ADImageLayer.superlayer == nil,
