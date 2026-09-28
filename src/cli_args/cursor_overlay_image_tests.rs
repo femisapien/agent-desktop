@@ -38,7 +38,11 @@ impl Drop for TempDir {
 fn image_and_motion_flags_are_validated_and_stored_together() {
     let dir = TempDir::new();
     let file = dir.0.join("cursor.png");
-    std::fs::write(&file, b"\x89PNG\r\n\x1a\nrest").unwrap();
+    std::fs::write(
+        &file,
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\x0dIHDR\x00\x00\x00\x20\x00\x00\x00\x20",
+    )
+    .unwrap();
     let cwd = std::env::current_dir().unwrap();
     let relative = pathdiff(&file, &cwd);
     let config = parse(&[
@@ -136,7 +140,11 @@ fn unreadable_or_mismatched_images_are_invalid_args() {
 fn a_pointer_image_is_verified_and_stored_beside_the_arrow() {
     let dir = TempDir::new();
     let hand = dir.0.join("hand.png");
-    std::fs::write(&hand, b"\x89PNG\r\n\x1a\nrest").unwrap();
+    std::fs::write(
+        &hand,
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\x0dIHDR\x00\x00\x00\x20\x00\x00\x00\x20",
+    )
+    .unwrap();
     let config = parse(&[
         "--pointer-image",
         hand.to_str().unwrap(),

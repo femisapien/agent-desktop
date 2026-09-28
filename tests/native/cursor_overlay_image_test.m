@@ -104,6 +104,18 @@ int main(void) {
         [[NSFileManager defaultManager] removeItemAtPath:hand error:nil];
         ADPointerImageApply(window, pointer);
         require(!pointer.hidden, "a deleted pointer image must fall back to the arrow");
+        NSString *bomb = [NSTemporaryDirectory()
+            stringByAppendingPathComponent:[NSString stringWithFormat:@"ad-cursor-bomb-%d.png", getpid()]];
+        const uint8_t header[24] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 13,
+                                    'I', 'H', 'D', 'R', 0, 0, 0x4e, 0x20, 0, 0, 0x4e, 0x20};
+        require([[NSData dataWithBytes:header length:sizeof(header)] writeToFile:bomb atomically:YES],
+                "oversized fixture must be written");
+        agent_desktop_cursor_overlay_image(0, bomb.fileSystemRepresentation, 0.0, 0.0);
+        ADPointerImageSelect(window, pointer, false);
+        ADPointerImageApply(window, pointer);
+        require(!pointer.hidden && ADImageLayer.superlayer == nil,
+                "a PNG declaring more than 8192 pixels per side must fall back to the arrow");
+        [[NSFileManager defaultManager] removeItemAtPath:bomb error:nil];
         [[NSFileManager defaultManager] removeItemAtPath:small error:nil];
     }
     return 0;

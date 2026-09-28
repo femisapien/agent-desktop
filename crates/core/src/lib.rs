@@ -183,7 +183,8 @@ pub use cursor_overlay::{
     CURSOR_LABEL_REVEAL_MS, CURSOR_MOTION_BUDGET_MS, CURSOR_OVERLAY_GREETING, CURSOR_REST_FADE_MS,
     CursorImage, CursorImages, CursorMotion, CursorMotionProfile, CursorOverlayConfig,
     CursorOverlayControl, CursorOverlayInstruction, CursorOverlayStyle, CursorPhase, CursorPose,
-    MAX_CURSOR_IMAGE_BYTES, MAX_CURSOR_IMAGE_PATH_BYTES, MAX_CURSOR_LABEL_BYTES,
+    MAX_CURSOR_IMAGE_BYTES, MAX_CURSOR_IMAGE_PATH_BYTES, MAX_CURSOR_IMAGE_PIXELS,
+    MAX_CURSOR_LABEL_BYTES,
     MAX_CURSOR_LABEL_WORDS, place_label,
 };
 pub use deadline::{DEFAULT_OPERATION_TIMEOUT_MS, Deadline};

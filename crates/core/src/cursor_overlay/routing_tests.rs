@@ -140,6 +140,42 @@ fn multi_agent_session_cancel_drag_routes_to_the_per_agent_socket() {
     assert_eq!(cancel.agent_id(), Some("agent-a"));
 }
 
+fn context_with_pointer_image() -> CommandContext {
+    let mut style = CursorOverlayStyle::default();
+    let hand = std::env::temp_dir().join("hand.png");
+    style.set_pointer_image(Some(
+        crate::CursorImage::new(
+            hand.to_string_lossy().into_owned(),
+            Point { x: 8.0, y: 0.0 },
+        )
+        .expect("valid pointer image"),
+    ));
+    let config = CursorOverlayConfig::enabled(None, 6)
+        .and_then(|config| config.with_style(style))
+        .expect("valid config");
+    CommandContext::default().with_cursor_overlay_session("test-session", config)
+}
+
+#[test]
+fn without_a_pointer_image_travel_never_carries_the_pointer_flag() {
+    let adapter = RoutingCaptureAdapter::new();
+    dispatch_mouse_event_with_cursor(
+        &adapter,
+        &context(false, "agent-a"),
+        click_event(),
+        true,
+        &lease(),
+    )
+    .expect("dispatch succeeds");
+    let presented = adapter.presented.lock().unwrap();
+    assert!(
+        presented
+            .iter()
+            .all(|control| !serde_json::to_string(control).unwrap().contains("pointer")),
+        "controls must stay readable by renderers that predate pointer images"
+    );
+}
+
 #[test]
 fn a_control_whose_style_is_out_of_range_fails_its_own_validation() {
     let mut style = CursorOverlayStyle::default();
@@ -159,7 +195,7 @@ fn a_coordinate_click_arrives_as_the_pointer_and_a_move_as_the_arrow() {
         let adapter = RoutingCaptureAdapter::new();
         dispatch_mouse_event_with_cursor(
             &adapter,
-            &context(false, "agent-a"),
+            &context_with_pointer_image(),
             click_event(),
             click,
             &lease(),

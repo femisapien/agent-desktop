@@ -287,7 +287,7 @@ The style command is optional and saves settings for the next presentation witho
 **Behaviour**
 
 - The cursor travels a human path in 90–320 ms. It never rotates or resizes.
-- `--image` swaps the arrow for your PNG or PDF (≤ 2 MiB). Fill and rim do not apply; accent still drives the ripple, outline and trail. Oversized images are scaled down to fit the cursor stage, and a missing file falls back to the arrow. `--pointer-image` adds a second image, such as a pointing hand, shown when the cursor lands on a pressable control.
+- `--image` swaps the arrow for your PNG or PDF (≤ 2 MiB). Fill and rim do not apply; accent still drives the ripple, outline and trail. Oversized images are scaled down to fit the cursor stage, and a missing file falls back to the arrow. `--pointer-image` adds a second image, such as a pointing hand, shown when a ref action lands on a button, link or other pressable control, and on coordinate clicks.
 - The action waits up to 900 ms for cursor arrival confirmation. If the renderer does not confirm in time, a warning is reported and the action proceeds.
 - A click plays a ripple, then flashes an accent outline around the element for 0.9 s. Both draw below the cursor.
 - Idle for 6 s, it fades out. The next command brings it back.

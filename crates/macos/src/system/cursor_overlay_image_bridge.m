@@ -1,9 +1,12 @@
 #import "cursor_overlay_chrome.h"
 #import <stdbool.h>
+#import <fcntl.h>
 #import <stdint.h>
 #import <sys/stat.h>
+#import <unistd.h>
 
 static const off_t ADImageMaxBytes = 2 * 1024 * 1024;
+static const uint32_t ADImageMaxPixels = 8192;
 static const uint8_t ADImageSlots = 2;
 static const uint8_t ADArrowSlot = 0;
 static const uint8_t ADPointerSlot = 1;
@@ -15,7 +18,7 @@ static const uint8_t ADPointerSlot = 1;
 @property(nonatomic) bool known;
 @property(nonatomic) struct timespec modified;
 @property(nonatomic) off_t bytes;
-@property(nonatomic, strong) id raster;
+@property(nonatomic, strong) NSBitmapImageRep *raster;
 @property(nonatomic) CGSize rasterPixels;
 @end
 
@@ -56,13 +59,56 @@ bool agent_desktop_cursor_overlay_image(uint8_t slot,
     }
 }
 
+static uint32_t ADImageBigEndian(const uint8_t *bytes) {
+    return ((uint32_t)bytes[0] << 24) | ((uint32_t)bytes[1] << 16) | ((uint32_t)bytes[2] << 8) |
+           (uint32_t)bytes[3];
+}
+
+static bool ADImagePixelsFit(NSData *data) {
+    static const uint8_t png[8] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
+    const uint8_t *bytes = data.bytes;
+    if (data.length < 8 || memcmp(bytes, png, sizeof(png)) != 0) {
+        return true;
+    }
+    if (data.length < 24 || memcmp(bytes + 12, "IHDR", 4) != 0) {
+        return false;
+    }
+    uint32_t width = ADImageBigEndian(bytes + 16);
+    uint32_t height = ADImageBigEndian(bytes + 20);
+    return width > 0 && height > 0 && width <= ADImageMaxPixels && height <= ADImageMaxPixels;
+}
+
+static NSData *ADImageRead(NSString *path, struct stat *info) {
+    int fd = open(path.fileSystemRepresentation, O_RDONLY | O_CLOEXEC);
+    if (fd < 0) {
+        return nil;
+    }
+    NSMutableData *data = nil;
+    if (fstat(fd, info) == 0 && S_ISREG(info->st_mode) && info->st_size > 0 &&
+        info->st_size <= ADImageMaxBytes) {
+        data = [NSMutableData dataWithLength:(NSUInteger)info->st_size];
+        size_t total = 0;
+        while (total < data.length) {
+            ssize_t count = read(fd, (uint8_t *)data.mutableBytes + total, data.length - total);
+            if (count <= 0) {
+                break;
+            }
+            total += (size_t)count;
+        }
+        if (total != data.length) {
+            data = nil;
+        }
+    }
+    close(fd);
+    return data;
+}
+
 static NSImage *ADImageCurrent(ADCursorImageSlot *slot) {
     if (slot.path == nil) {
         return nil;
     }
     struct stat info;
-    if (stat(slot.path.fileSystemRepresentation, &info) != 0 || !S_ISREG(info.st_mode) ||
-        info.st_size > ADImageMaxBytes) {
+    if (stat(slot.path.fileSystemRepresentation, &info) != 0) {
         slot.loaded = nil;
         slot.known = false;
         return nil;
@@ -73,7 +119,8 @@ static NSImage *ADImageCurrent(ADCursorImageSlot *slot) {
     if (unchanged) {
         return slot.loaded;
     }
-    NSImage *image = [[NSImage alloc] initWithContentsOfFile:slot.path];
+    NSData *data = ADImageRead(slot.path, &info);
+    NSImage *image = data != nil && ADImagePixelsFit(data) ? [[NSImage alloc] initWithData:data] : nil;
     bool usable = image != nil && image.size.width > 0.0 && image.size.height > 0.0;
     slot.loaded = usable ? image : nil;
     slot.known = true;
@@ -105,7 +152,7 @@ static CGFloat ADImageFit(CGFloat extent, CGFloat room) {
 
 static id ADImageRasterize(ADCursorImageSlot *slot, NSImage *image, CGSize pixels) {
     if (CGSizeEqualToSize(pixels, slot.rasterPixels) && slot.raster != nil) {
-        return slot.raster;
+        return (__bridge id)slot.raster.CGImage;
     }
     NSBitmapImageRep *raster =
         [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
@@ -131,9 +178,9 @@ static id ADImageRasterize(ADCursorImageSlot *slot, NSImage *image, CGSize pixel
             operation:NSCompositingOperationCopy
              fraction:1.0];
     [NSGraphicsContext restoreGraphicsState];
-    slot.raster = (__bridge id)raster.CGImage;
+    slot.raster = raster;
     slot.rasterPixels = pixels;
-    return slot.raster;
+    return (__bridge id)slot.raster.CGImage;
 }
 
 static bool ADImageDraw(NSWindow *window, CALayer *pointer, ADCursorImageSlot *slot) {

@@ -20,7 +20,9 @@ pub(crate) fn travel_scope(
 }
 
 /// Moves the drawn cursor to `destination` before an action; `pointer` arrives showing the
-/// pointer image because the action lands on a pressable control.
+/// pointer image because the action lands on a pressable control. The flag is sent only
+/// when a pointer image is configured, so controls without one stay byte-identical to what
+/// earlier renderers accept.
 pub(crate) fn submit_travel(
     adapter: &dyn PlatformAdapter,
     context: &CommandContext,
@@ -32,8 +34,13 @@ pub(crate) fn submit_travel(
         return;
     };
     let instruction =
-        super::CursorOverlayInstruction::new(destination, context.cursor_overlay(), false)
-            .map(|instruction| instruction.with_pointer(pointer));
+        super::CursorOverlayInstruction::new(destination, context.cursor_overlay(), false).map(
+            |instruction| {
+                instruction.with_pointer(
+                    pointer && context.cursor_overlay().style().pointer_image().is_some(),
+                )
+            },
+        );
     let _ = send(adapter, context, instruction);
 }
 

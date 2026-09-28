@@ -5,6 +5,9 @@ use std::path::Path;
 
 pub const MAX_CURSOR_IMAGE_PATH_BYTES: usize = 1024;
 pub const MAX_CURSOR_IMAGE_BYTES: u64 = 2 * 1024 * 1024;
+/// Largest PNG pixel width or height the renderer will decode.
+pub const MAX_CURSOR_IMAGE_PIXELS: u32 = 8192;
+const PNG_HEADER_BYTES: usize = 24;
 const MAX_HOTSPOT: f64 = 512.0;
 const PNG_MAGIC: &[u8] = b"\x89PNG\r\n\x1a\n";
 const PDF_MAGIC: &[u8] = b"%PDF-";
@@ -28,9 +31,9 @@ impl CursorImage {
         if self.path.is_empty() || self.path.contains('\0') {
             return Err(invalid("Cursor image path must be a non-empty file path"));
         }
-        if self.path.len() > MAX_CURSOR_IMAGE_PATH_BYTES {
+        if escaped_len(&self.path) > MAX_CURSOR_IMAGE_PATH_BYTES {
             return Err(invalid(format!(
-                "Cursor image path must be at most {MAX_CURSOR_IMAGE_PATH_BYTES} bytes"
+                "Cursor image path must be at most {MAX_CURSOR_IMAGE_PATH_BYTES} bytes once JSON-escaped"
             )));
         }
         if !Path::new(&self.path).is_absolute() {
@@ -48,13 +51,16 @@ impl CursorImage {
         Ok(self)
     }
 
-    /// Checks that the file exists, fits the size limit, and carries the
-    /// signature its extension promises.
+    /// Checks that the file is a regular file within the size limit, carries the signature
+    /// its extension promises and, for a PNG, declares at most
+    /// [`MAX_CURSOR_IMAGE_PIXELS`] per side. Every check reads the same open file.
     pub fn verify_file(&self) -> Result<(), AdapterError> {
-        let metadata = std::fs::metadata(&self.path).map_err(|error| {
+        let unreadable = |error: std::io::Error| {
             invalid(format!("Cursor image '{}' cannot be read", self.path))
                 .with_platform_detail(error.to_string())
-        })?;
+        };
+        let mut file = std::fs::File::open(&self.path).map_err(unreadable)?;
+        let metadata = file.metadata().map_err(unreadable)?;
         if !metadata.is_file() {
             return Err(invalid(format!(
                 "Cursor image '{}' is not a regular file",
@@ -68,17 +74,22 @@ impl CursorImage {
             )));
         }
         let magic = self.format().unwrap_or(PNG_MAGIC);
-        let mut header = vec![0; magic.len()];
-        std::fs::File::open(&self.path)
-            .and_then(|mut file| file.read_exact(&mut header))
-            .map_err(|error| {
-                invalid(format!("Cursor image '{}' cannot be read", self.path))
-                    .with_platform_detail(error.to_string())
-            })?;
-        if header != magic {
+        let header_len = if magic == PNG_MAGIC {
+            PNG_HEADER_BYTES
+        } else {
+            magic.len()
+        };
+        let mut header = vec![0; header_len];
+        file.read_exact(&mut header).map_err(unreadable)?;
+        if !header.starts_with(magic) {
             return Err(invalid(format!(
                 "Cursor image '{}' content does not match its extension",
                 self.path
+            )));
+        }
+        if magic == PNG_MAGIC && !png_dimensions_fit(&header) {
+            return Err(invalid(format!(
+                "Cursor image PNG must be at most {MAX_CURSOR_IMAGE_PIXELS} pixels per side"
             )));
         }
         Ok(())
@@ -102,6 +113,26 @@ impl CursorImage {
             None
         }
     }
+}
+
+/// Reads width and height from the IHDR chunk that follows the PNG signature.
+fn png_dimensions_fit(header: &[u8]) -> bool {
+    let side = |at: usize| {
+        header
+            .get(at..at + 4)
+            .and_then(|bytes| bytes.try_into().ok())
+            .map(u32::from_be_bytes)
+    };
+    matches!(
+        (header.get(12..16), side(16), side(20)),
+        (Some(b"IHDR"), Some(width), Some(height))
+            if (1..=MAX_CURSOR_IMAGE_PIXELS).contains(&width)
+                && (1..=MAX_CURSOR_IMAGE_PIXELS).contains(&height)
+    )
+}
+
+fn escaped_len(value: &str) -> usize {
+    serde_json::to_string(value).map_or(usize::MAX, |json| json.len().saturating_sub(2))
 }
 
 const fn origin() -> Point {

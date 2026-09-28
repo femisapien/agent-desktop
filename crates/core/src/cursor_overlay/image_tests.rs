@@ -2,7 +2,14 @@ use super::*;
 use crate::{Point, Rect};
 use std::path::PathBuf;
 
-const PNG_HEADER: &[u8] = b"\x89PNG\r\n\x1a\n";
+const PNG_HEADER: &[u8] = b"\x89PNG\r\n\x1a\n\x00\x00\x00\x0dIHDR\x00\x00\x00\x20\x00\x00\x00\x20";
+
+fn png_declaring(width: u32, height: u32) -> Vec<u8> {
+    let mut header = PNG_HEADER[..16].to_vec();
+    header.extend(width.to_be_bytes());
+    header.extend(height.to_be_bytes());
+    header
+}
 
 struct TempDir(PathBuf);
 
@@ -35,6 +42,10 @@ impl Drop for TempDir {
 
 fn origin() -> Point {
     Point { x: 0.0, y: 0.0 }
+}
+
+fn escaped(value: &str) -> usize {
+    serde_json::to_string(value).unwrap().len() - 2
 }
 
 fn absolute(name: &str) -> String {
@@ -72,9 +83,9 @@ fn image_paths_and_hotspots_are_validated() {
 #[test]
 fn a_1024_byte_absolute_path_is_the_longest_accepted() {
     let base = absolute("x");
-    let stem = MAX_CURSOR_IMAGE_PATH_BYTES - base.len() - ".png".len();
+    let stem = MAX_CURSOR_IMAGE_PATH_BYTES - escaped(&base) - ".png".len();
     let exact = format!("{base}{}.png", "a".repeat(stem));
-    assert_eq!(exact.len(), MAX_CURSOR_IMAGE_PATH_BYTES);
+    assert_eq!(escaped(&exact), MAX_CURSOR_IMAGE_PATH_BYTES);
     assert!(CursorImage::new(exact.clone(), origin()).is_ok());
     let over = format!("{base}{}.png", "a".repeat(stem + 1));
     assert!(CursorImage::new(over, origin()).is_err());
@@ -201,7 +212,7 @@ fn worst_case_image_present_fits_the_renderer_transport_limit() {
     let base = absolute("x");
     let path = format!(
         "{base}{}.pdf",
-        "a".repeat(MAX_CURSOR_IMAGE_PATH_BYTES - base.len() - ".pdf".len())
+        "a".repeat(MAX_CURSOR_IMAGE_PATH_BYTES - escaped(&base) - ".pdf".len())
     );
     let mut style = CursorOverlayStyle::default();
     style.set_fill("#123456".into());
@@ -232,4 +243,49 @@ fn worst_case_image_present_fits_the_renderer_transport_limit() {
     control.validate().unwrap();
     let bytes = serde_json::to_vec(&control).unwrap().len();
     assert!(bytes < 4096, "{bytes} bytes");
+}
+
+#[test]
+fn png_pixel_dimensions_are_bounded_before_decoding() {
+    let dir = TempDir::new("pixels");
+    let max = MAX_CURSOR_IMAGE_PIXELS;
+    for (width, height, ok) in [
+        (max, max, true),
+        (1, 1, true),
+        (max + 1, 32, false),
+        (32, u32::MAX, false),
+        (0, 32, false),
+    ] {
+        let path = dir.file(
+            &format!("p{width}x{height}.png"),
+            &png_declaring(width, height),
+        );
+        let image = CursorImage::new(path, origin()).unwrap();
+        assert_eq!(image.verify_file().is_ok(), ok, "{width}x{height}");
+    }
+    let no_ihdr = dir.file(
+        "no-ihdr.png",
+        &[
+            &PNG_HEADER[..8],
+            b"\x00\x00\x00\x0dIDAT\x00\x00\x00\x20\x00\x00\x00\x20",
+        ]
+        .concat(),
+    );
+    assert!(
+        CursorImage::new(no_ihdr, origin())
+            .unwrap()
+            .verify_file()
+            .is_err()
+    );
+}
+
+#[test]
+fn the_path_limit_counts_json_escaping() {
+    let base = absolute("q");
+    let room = MAX_CURSOR_IMAGE_PATH_BYTES - escaped(&base) - ".png".len();
+    let plain = format!("{base}{}.png", "a".repeat(room));
+    assert!(CursorImage::new(plain, origin()).is_ok());
+    let quoted = format!("{base}{}.png", "\"".repeat(room / 2 + 1));
+    assert!(quoted.len() <= MAX_CURSOR_IMAGE_PATH_BYTES);
+    assert!(CursorImage::new(quoted, origin()).is_err());
 }
