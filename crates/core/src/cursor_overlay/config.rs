@@ -1,4 +1,4 @@
-use super::CursorOverlayStyle;
+use super::{CursorMotionProfile, CursorOverlayStyle};
 use crate::{AdapterError, ErrorCode};
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +19,8 @@ pub struct CursorOverlayConfig {
     style: CursorOverlayStyle,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     multi_agent: bool,
+    #[serde(default, skip_serializing_if = "CursorMotionProfile::is_default")]
+    motion: CursorMotionProfile,
 }
 
 impl CursorOverlayConfig {
@@ -29,6 +31,7 @@ impl CursorOverlayConfig {
             max_words,
             style: CursorOverlayStyle::default(),
             multi_agent: false,
+            motion: CursorMotionProfile::default(),
         }
         .validated()
     }
@@ -36,6 +39,15 @@ impl CursorOverlayConfig {
     pub fn with_style(mut self, style: CursorOverlayStyle) -> Result<Self, AdapterError> {
         self.style = style.validated()?;
         Ok(self)
+    }
+
+    pub fn with_motion(mut self, motion: CursorMotionProfile) -> Result<Self, AdapterError> {
+        self.motion = motion.validated()?;
+        Ok(self)
+    }
+
+    pub const fn motion(&self) -> &CursorMotionProfile {
+        &self.motion
     }
 
     pub fn with_multi_agent(mut self, enabled: bool) -> Self {
@@ -81,6 +93,7 @@ impl CursorOverlayConfig {
             .take()
             .and_then(|label| limit_words(label.trim(), self.max_words));
         self.style = std::mem::take(&mut self.style).validated()?;
+        self.motion.validate()?;
         Ok(self)
     }
 
@@ -109,6 +122,7 @@ impl Default for CursorOverlayConfig {
             max_words: DEFAULT_CURSOR_LABEL_WORDS,
             style: CursorOverlayStyle::default(),
             multi_agent: false,
+            motion: CursorMotionProfile::default(),
         }
     }
 }

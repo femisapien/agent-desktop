@@ -168,6 +168,8 @@ agent-desktop session end "$AGENT_DESKTOP_SESSION"
 
 `cursor-overlay enable` draws an agent cursor and ripple for actions. It affects presentation only. `enable` returns `data.rendered`. Read it: `false` means the setting was saved but nothing was drawn. The styling flags are listed by `agent-desktop cursor-overlay enable --help`. `session start --cursor` enables it at start.
 
+Motion flags on `cursor-overlay enable` are stored with the session or per-agent profile: `--travel-ms MIN,MAX` (default `90,320`, `30 ≤ MIN ≤ MAX`), `--bow N` (0–3, default 1), `--overshoot N` (0–0.15, default 0.035), `--tremor PX` (0–4 points, default 1.1), `--dwell-ms N` (0–300, default 0), and `--motion-seed N` (deterministic variation per move, off by default). Travel max plus dwell must be ≤700 ms or the command returns `INVALID_ARGS`; the arrival budget remains 900 ms. On macOS, Reduce Motion skips travel and dwell, and physical headed drags keep their own motion. After upgrading, run `cursor-overlay disable` then `enable` to restart the renderer with the new settings.
+
 Multi-agent cursors (macOS and Windows): start with `session start --cursor --multi-agent`, then pass the returned session id to every subagent.
 
 - Desktop UI actions then require an agent id: global `--agent-id <id>` or `AGENT_DESKTOP_AGENT_ID`. The flag wins. Observations, clipboard commands and session administration do not need one.

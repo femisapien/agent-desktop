@@ -62,7 +62,8 @@ fn show_default_cursor(
         return Ok(());
     };
     let config = CursorOverlayConfig::enabled(None, 6)?.with_multi_agent(multi_agent);
-    let control = CursorOverlayControl::enable(id.clone(), config.style().clone());
+    let control = CursorOverlayControl::enable(id.clone(), config.style().clone())
+        .with_motion(config.motion().clone());
     let enabled =
         cursor_overlay::execute(&id, cursor_overlay::CursorOverlayAction::Enable(config))?;
     if let Some(overlay) = enabled.get("cursor_overlay").cloned()

@@ -139,6 +139,7 @@ fn send(
         instruction,
         context.cursor_overlay().style().clone(),
     )
+    .with_motion(context.cursor_overlay().motion().clone())
     .with_agent_id(agent_route(context));
     update(adapter, &control)
 }

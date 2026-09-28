@@ -4,6 +4,8 @@ mod hand_path;
 mod instruction;
 mod layout;
 mod motion;
+mod motion_profile;
+mod path_shape;
 mod phase;
 mod pose;
 mod style;
@@ -15,6 +17,7 @@ pub use control::{CURSOR_OVERLAY_GREETING, CursorOverlayControl};
 pub use instruction::CursorOverlayInstruction;
 pub use layout::place_label;
 pub use motion::CursorMotion;
+pub use motion_profile::CursorMotionProfile;
 pub use phase::CursorPhase;
 pub use pose::CursorPose;
 pub use style::CursorOverlayStyle;
@@ -24,9 +27,11 @@ pub(crate) use submit::{
 };
 pub use timing::{
     CURSOR_ARRIVAL_TIMEOUT_MS, CURSOR_HIGHLIGHT_HOLD_MS, CURSOR_IDLE_REST_MS,
-    CURSOR_LABEL_REVEAL_MS, CURSOR_REST_FADE_MS,
+    CURSOR_LABEL_REVEAL_MS, CURSOR_MOTION_BUDGET_MS, CURSOR_REST_FADE_MS,
 };
 
+#[cfg(test)]
+mod motion_profile_tests;
 #[cfg(test)]
 mod routing_tests;
 #[cfg(test)]

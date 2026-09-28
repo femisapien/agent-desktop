@@ -278,6 +278,8 @@ The style command is optional and saves settings for the next presentation witho
 | `--no-ripple` | No ripple on click | ripple on |
 | `--no-highlight` | No element outline on click | outline on |
 
+`cursor-overlay enable` also accepts `--travel-ms`, `--bow`, `--overshoot`, `--tremor`, `--dwell-ms` and `--motion-seed` for session or per-agent motion profiles; see the [system command reference](skills/agent-desktop/references/commands-system.md#cursor-overlay).
+
 **Behaviour**
 
 - The cursor travels a human path in 90–320 ms. It never rotates or resizes.
