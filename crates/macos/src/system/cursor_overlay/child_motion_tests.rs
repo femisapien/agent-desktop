@@ -124,3 +124,21 @@ fn seeded_renderer_moves_differ_from_one_travel_to_the_next() {
     assert_ne!(first, second);
     assert_eq!(first.last(), second.last());
 }
+
+#[test]
+fn enable_restarts_the_seeded_move_sequence() {
+    let mut state = OverlayState {
+        moves: 9,
+        ..OverlayState::default()
+    };
+    absorb_settings(&present(travel(Point { x: 1.0, y: 1.0 })), &mut state);
+    assert_eq!(state.moves, 9, "a present keeps the sequence going");
+    absorb_settings(
+        &CursorOverlayControl::enable("run".into(), Default::default()).with_motion(tuned()),
+        &mut state,
+    );
+    assert_eq!(
+        state.moves, 0,
+        "enable replays the seed from its first move"
+    );
+}

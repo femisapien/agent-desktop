@@ -287,3 +287,27 @@ fn worst_case_present_fits_the_renderer_transport_limit() {
     let bytes = serde_json::to_vec(&control).unwrap().len();
     assert!(bytes < 4096, "{bytes} bytes");
 }
+
+#[test]
+fn an_unvalidated_profile_falls_back_to_the_default_motion() {
+    let start = point(0.0, 0.0);
+    let destination = point(700.0, 200.0);
+    let reference = CursorMotion::new(start.clone(), destination.clone());
+    for broken in [
+        profile(|p| p.set_travel_ms(500, 100)),
+        profile(|p| p.set_bow(f64::NAN)),
+        profile(|p| p.set_tremor(f64::INFINITY)),
+        profile(|p| p.set_dwell_ms(10_000)),
+    ] {
+        let motion = CursorMotion::shaped(start.clone(), destination.clone(), &broken, 0);
+        assert_eq!(motion.duration_ms(), reference.duration_ms(), "{broken:?}");
+        assert_eq!(motion.dwell_ms(), 0, "{broken:?}");
+        for elapsed in 0..=motion.duration_ms() {
+            assert_eq!(
+                motion.sample(elapsed),
+                reference.sample(elapsed),
+                "{broken:?}"
+            );
+        }
+    }
+}

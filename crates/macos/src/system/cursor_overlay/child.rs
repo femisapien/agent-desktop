@@ -166,6 +166,9 @@ fn absorb_settings(control: &CursorOverlayControl, state: &mut OverlayState) -> 
     if let Some(motion) = control.motion() {
         state.motion = motion.clone();
     }
+    if control.is_enable() {
+        state.moves = 0;
+    }
     let Some(style) = control.style() else {
         return false;
     };

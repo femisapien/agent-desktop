@@ -19,13 +19,21 @@ impl CursorMotion {
     }
 
     /// Overlay motion tuned by `profile`; `move_index` varies seeded paths
-    /// from one move to the next.
+    /// from one move to the next. A profile that fails validation falls back
+    /// to the default motion.
     pub fn shaped(
         start: Point,
         destination: Point,
         profile: &CursorMotionProfile,
         move_index: u64,
     ) -> Self {
+        let fallback;
+        let profile = if profile.validate().is_ok() {
+            profile
+        } else {
+            fallback = CursorMotionProfile::default();
+            &fallback
+        };
         let path = HandPath::shaped(
             start,
             destination,
