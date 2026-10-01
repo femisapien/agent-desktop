@@ -24,7 +24,7 @@ pub fn execute(
     ensure_combo_allowed(&combo, &args.combo, args.force, adapter)?;
     let deadline = crate::Deadline::standard()?;
 
-    let result = if let Some(expected) = target_app(&args, adapter, deadline)? {
+    let result = if let Some((expected, window)) = target_app(&args, adapter, deadline)? {
         let lease = adapter.acquire_interaction_lease(deadline)?;
         let live = crate::commands::helpers::revalidate_app_for_mutation(
             adapter,
@@ -33,7 +33,17 @@ pub fn execute(
         )?;
         let process = crate::commands::helpers::process_identity(&live)?;
         if context.physical_input_policy().is_headed() {
-            crate::headed_focus::focus_process_window(process.clone(), adapter, context, &lease)?;
+            match &window {
+                Some(window) => {
+                    crate::headed_focus::focus_exact_window(window, adapter, context, &lease)?
+                }
+                None => crate::headed_focus::focus_process_window(
+                    process.clone(),
+                    adapter,
+                    context,
+                    &lease,
+                )?,
+            };
         }
         adapter.press_key_for_app(process, &combo, context.physical_input_policy(), &lease)?
     } else {
@@ -54,13 +64,11 @@ pub fn execute(
     )
 }
 
-/// `--window-id` names one running instance even when several share an
-/// application name; `--app` alone must match a single instance.
 fn target_app(
     args: &PressArgs,
     adapter: &dyn PlatformAdapter,
     deadline: crate::Deadline,
-) -> Result<Option<crate::AppInfo>, AppError> {
+) -> Result<Option<(crate::AppInfo, Option<crate::WindowInfo>)>, AppError> {
     if let Some(window_id) = &args.window_id {
         let window = crate::snapshot::resolve_window(
             adapter,
@@ -68,12 +76,14 @@ fn target_app(
             Some(window_id),
             deadline,
         )?;
-        return crate::app_lookup::resolve_app_owning(&window, adapter, deadline).map(Some);
+        let app = crate::app_lookup::resolve_app_owning(&window, adapter, deadline)?;
+        return Ok(Some((app, Some(window))));
     }
     args.app
         .as_deref()
         .map(|app| crate::commands::helpers::resolve_app(Some(app), adapter, deadline))
         .transpose()
+        .map(|app| app.map(|app| (app, None)))
 }
 
 #[cfg(test)]

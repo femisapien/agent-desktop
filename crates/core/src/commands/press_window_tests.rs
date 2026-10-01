@@ -9,6 +9,7 @@ use std::sync::Mutex;
 #[derive(Default)]
 struct TwoInstancesAdapter {
     pressed_pid: Mutex<Option<u32>>,
+    focused_window: Mutex<Option<String>>,
 }
 
 fn instance(pid: u32) -> crate::AppInfo {
@@ -46,7 +47,10 @@ impl ObservationOps for TwoInstancesAdapter {
         _filter: &crate::WindowFilter,
         _deadline: crate::Deadline,
     ) -> Result<Vec<crate::WindowInfo>, AdapterError> {
-        Ok(vec![window(41), window(42)])
+        let mut second = window(42);
+        second.id = "w-42-prefs".into();
+        second.title = "Preferences".into();
+        Ok(vec![window(41), window(42), second])
     }
 }
 
@@ -66,6 +70,23 @@ impl InputOps for TwoInstancesAdapter {}
 impl SystemOps for TwoInstancesAdapter {
     crate::adapter::guarded_interaction_lease!();
 
+    fn resolve_window_strict(
+        &self,
+        window: &crate::WindowInfo,
+        _deadline: crate::Deadline,
+    ) -> Result<crate::WindowInfo, AdapterError> {
+        Ok(window.clone())
+    }
+
+    fn focus_window(
+        &self,
+        window: &crate::WindowInfo,
+        _lease: &crate::InteractionLease,
+    ) -> Result<(), AdapterError> {
+        *self.focused_window.lock().unwrap() = Some(window.id.clone());
+        Ok(())
+    }
+
     fn press_key_for_app(
         &self,
         process: crate::ProcessIdentity,
@@ -83,6 +104,15 @@ fn press(
     window_id: Option<&str>,
     adapter: &TwoInstancesAdapter,
 ) -> Result<serde_json::Value, crate::AppError> {
+    press_with(app, window_id, adapter, &CommandContext::default())
+}
+
+fn press_with(
+    app: Option<&str>,
+    window_id: Option<&str>,
+    adapter: &TwoInstancesAdapter,
+    context: &CommandContext,
+) -> Result<serde_json::Value, crate::AppError> {
     execute(
         PressArgs {
             combo: "cmd+k".into(),
@@ -91,7 +121,7 @@ fn press(
             force: false,
         },
         adapter,
-        &CommandContext::default(),
+        context,
     )
 }
 
@@ -131,4 +161,18 @@ fn unknown_window_id_is_window_not_found() {
 
     assert_eq!(error.code(), "WINDOW_NOT_FOUND");
     assert!(adapter.pressed_pid.lock().unwrap().is_none());
+}
+
+#[test]
+fn headed_window_id_focuses_the_named_window_not_another_of_the_instance() {
+    let adapter = TwoInstancesAdapter::default();
+    let context = CommandContext::default().with_headed(true);
+
+    press_with(None, Some("w-42-prefs"), &adapter, &context).unwrap();
+
+    assert_eq!(
+        adapter.focused_window.lock().unwrap().as_deref(),
+        Some("w-42-prefs")
+    );
+    assert_eq!(*adapter.pressed_pid.lock().unwrap(), Some(42));
 }
