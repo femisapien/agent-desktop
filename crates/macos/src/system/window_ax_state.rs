@@ -160,10 +160,6 @@ enum FocusedRoleKind {
     NotAWindow,
 }
 
-/// What an application's `AXFocusedWindow` actually is. Finder answers with
-/// its desktop, an `AXScrollArea`, whenever the desktop has focus: that is a
-/// steady state of a responsive application with no focused window, not a
-/// transient one to retry, so it reports no focused window instead of failing.
 fn focused_role_kind(role: Option<&str>) -> FocusedRoleKind {
     match role {
         Some("AXWindow") => FocusedRoleKind::Window,
