@@ -130,7 +130,16 @@ fn adapter_success_cannot_override_contradictory_fresh_state() {
         ),
     ] {
         let adapter = adapter(before, after);
+        let typed = matches!(action, Action::TypeText(_));
         let error = execute(&adapter, action).unwrap_err();
+        assert_eq!(
+            error
+                .suggestion
+                .as_deref()
+                .unwrap_or("")
+                .contains("set-value"),
+            typed
+        );
         assert_eq!(error.code, ErrorCode::ActionFailed);
         assert_eq!(error.disposition, DeliverySemantics::delivered_unverified());
         assert!(error.details.unwrap()["post_state"].is_object());

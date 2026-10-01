@@ -10,6 +10,7 @@ use serde_json::Value;
 pub struct PressArgs {
     pub combo: String,
     pub app: Option<String>,
+    pub window_id: Option<String>,
     pub force: bool,
 }
 
@@ -23,8 +24,7 @@ pub fn execute(
     ensure_combo_allowed(&combo, &args.combo, args.force, adapter)?;
     let deadline = crate::Deadline::standard()?;
 
-    let result = if let Some(app_name) = &args.app {
-        let expected = crate::commands::helpers::resolve_app(Some(app_name), adapter, deadline)?;
+    let result = if let Some((expected, window)) = target_app(&args, adapter, deadline)? {
         let lease = adapter.acquire_interaction_lease(deadline)?;
         let live = crate::commands::helpers::revalidate_app_for_mutation(
             adapter,
@@ -33,7 +33,17 @@ pub fn execute(
         )?;
         let process = crate::commands::helpers::process_identity(&live)?;
         if context.physical_input_policy().is_headed() {
-            crate::headed_focus::focus_process_window(process.clone(), adapter, context, &lease)?;
+            match &window {
+                Some(window) => {
+                    crate::headed_focus::focus_exact_window(window, adapter, context, &lease)?
+                }
+                None => crate::headed_focus::focus_process_window(
+                    process.clone(),
+                    adapter,
+                    context,
+                    &lease,
+                )?,
+            };
         }
         adapter.press_key_for_app(process, &combo, context.physical_input_policy(), &lease)?
     } else {
@@ -48,12 +58,38 @@ pub fn execute(
     super::helpers::apply_scoped_post_action_wait(
         serde_json::to_value(result)?,
         args.app,
-        None,
+        args.window_id,
         adapter,
         context,
     )
 }
 
+fn target_app(
+    args: &PressArgs,
+    adapter: &dyn PlatformAdapter,
+    deadline: crate::Deadline,
+) -> Result<Option<(crate::AppInfo, Option<crate::WindowInfo>)>, AppError> {
+    if let Some(window_id) = &args.window_id {
+        let window = crate::snapshot::resolve_window(
+            adapter,
+            args.app.as_deref(),
+            Some(window_id),
+            deadline,
+        )?;
+        let app = crate::app_lookup::resolve_app_owning(&window, adapter, deadline)?;
+        return Ok(Some((app, Some(window))));
+    }
+    args.app
+        .as_deref()
+        .map(|app| crate::commands::helpers::resolve_app(Some(app), adapter, deadline))
+        .transpose()
+        .map(|app| app.map(|app| (app, None)))
+}
+
 #[cfg(test)]
 #[path = "press_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "press_window_tests.rs"]
+mod window_tests;

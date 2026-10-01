@@ -39,7 +39,7 @@ pub(crate) fn focus_process_window(
     focus_exact_window(&expected, adapter, context, lease)
 }
 
-fn focus_exact_window(
+pub(crate) fn focus_exact_window(
     expected: &WindowInfo,
     adapter: &dyn PlatformAdapter,
     context: &crate::CommandContext,

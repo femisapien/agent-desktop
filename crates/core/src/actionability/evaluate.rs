@@ -121,7 +121,10 @@ fn build_report(
     let mut verified_point = None;
     let presentation_point = evidence.bounds.and_then(center_point);
     if requirements.visible {
-        checks.push(gates::visibility(evidence));
+        checks.push(gates::visibility(
+            evidence,
+            requirements.requires_geometry(request, &evidence.available_actions),
+        ));
     }
     if requirements.requires_stability(pointer_delivery) {
         checks.push(gates::stability(stability, evidence.bounds));
