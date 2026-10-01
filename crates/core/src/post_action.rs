@@ -96,10 +96,7 @@ pub fn execute_verified_action(
         return Err(verification_error(
             &result,
             Some(&observed),
-            AdapterError::new(
-                ErrorCode::ActionFailed,
-                "Post-action state does not match the requested change",
-            ),
+            mismatch_error(&action),
         ));
     }
     result.post_state = Some(observed.state);
@@ -113,6 +110,20 @@ pub fn execute_verified_action(
         }
     }
     Ok(result)
+}
+
+fn mismatch_error(action: &Action) -> AdapterError {
+    let error = AdapterError::new(
+        ErrorCode::ActionFailed,
+        "Post-action state does not match the requested change",
+    );
+    if matches!(action, Action::TypeText(_)) {
+        return error.with_suggestion(
+            "Some fields, often in Chromium and Electron apps, accept typed text without applying it. \
+             Read the field with 'get', then write the full intended value with 'set-value'.",
+        );
+    }
+    error
 }
 
 fn secure_value_is_redacted(action: &Action, observed: &LiveElement) -> bool {
