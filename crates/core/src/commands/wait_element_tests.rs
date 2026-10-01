@@ -247,7 +247,7 @@ fn element_wait_wraps_bare_live_read_timeout_in_the_documented_wait_timeout() {
         "@e1".into(),
         Some(snapshot_id),
         wait_predicate::ElementPredicate::Enabled,
-        120,
+        400,
         &adapter,
         &crate::context::CommandContext::default(),
     )
@@ -265,7 +265,7 @@ fn element_wait_wraps_bare_live_read_timeout_in_the_documented_wait_timeout() {
     assert_eq!(details["kind"], "wait_timeout");
     assert_eq!(details["ref"], "@e1");
     assert_eq!(details["predicate"], "enabled");
-    assert_eq!(details["timeout_ms"], 120);
+    assert_eq!(details["timeout_ms"], 400);
     assert_eq!(details["last_observed"]["error"], "TIMEOUT");
     assert_eq!(details["last_observed"]["details"]["kind"], "deadline");
 }
