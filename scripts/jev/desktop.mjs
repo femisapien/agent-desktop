@@ -54,21 +54,25 @@ export const stopCursor = () => cli("cursor-overlay", "disable");
  * which is what makes it worth drilling into. A sheet or menu owns the screen
  * while it is up, so it is read instead of the window behind it.
  */
-export const observe = (app, root) => {
-  const base = ["snapshot", "--app", app, "-i", "--compact", "--include-bounds"];
+export const observe = (app, root, windowId = null) => {
+  const scope = windowId ? ["--app", app, "--window-id", windowId] : ["--app", app];
+  const base = ["snapshot", ...scope, "-i", "--compact", "--include-bounds"];
+  const unreadable = (what, error) => Object.assign(new Error(`${what} could not be read: ${error?.code}`),
+    { code: error?.code ?? null });
   let snap = root ? cli(...base, "--root", root) : cli(...base, "--skeleton");
-  if (!snap.ok && root) throw new Error(`that region could not be read: ${snap.error?.code}`);
-  if (!snap.ok) snap = cli(...base, "--max-depth", "4");
-  if (!snap.ok) throw new Error(`the screen could not be read: ${snap.error?.code}`);
+  if (!snap.ok && root) throw unreadable("that region", snap.error);
+  if (!snap.ok && snap.error?.code !== "WINDOW_NOT_FOUND") snap = cli(...base, "--max-depth", "4");
+  if (!snap.ok) throw unreadable("the screen", snap.error);
   const surface = root ? null : overlayRole(snap.data.tree);
   if (surface) {
-    const scoped = cli("snapshot", "--app", app, "--surface", surface, "-i", "--compact", "--include-bounds");
+    const scoped = cli("snapshot", ...scope, "--surface", surface, "-i", "--compact", "--include-bounds");
     if (scoped.ok) snap = scoped;
   }
   const nodes = offerable(collect(snap.data.tree));
   return {
     nodes,
-    screen: { app, window: snap.data.window?.title ?? null, surface: surface ?? "window", root },
+    screen: { app, window: snap.data.window?.title ?? null, window_id: snap.data.window?.id ?? windowId,
+      surface: surface ?? "window", root },
   };
 };
 
@@ -141,7 +145,7 @@ const verificationFailure = (observed) => ({
  * holding. A binary that reports no disposition cannot say whether a retry is
  * safe, so the run stops and names that instead of skipping the paste quietly.
  */
-export const enterText = async (app, node, text, clipboard) => {
+export const enterText = async (app, node, text, clipboard, windowId = null) => {
   const written = cli("set-value", node.ref_id, text);
   if (written.ok) return { route: "set-value", result: written };
   const failure = written.error;
@@ -158,7 +162,7 @@ export const enterText = async (app, node, text, clipboard) => {
   clipboard.borrow();
   const copied = cli("clipboard-set", text);
   if (!copied.ok) return { route: "paste", result: copied };
-  const pasted = cli("press", "cmd+v", "--app", app);
+  const pasted = cli("press", "cmd+v", "--app", app, ...(windowId ? ["--window-id", windowId] : []));
   if (!pasted.ok) return { route: "paste", result: pasted };
   const { held, observed } = await awaitFieldText(node.ref_id, text);
   if (!held) return { route: "paste", result: { ok: false, error: verificationFailure(observed) } };
@@ -167,7 +171,7 @@ export const enterText = async (app, node, text, clipboard) => {
   } } };
 };
 
-export const execute = async (app, operation, node, text, clipboard) => {
+export const execute = async (app, operation, node, text, clipboard, windowId = null) => {
   if (operation === "WAIT") {
     await sleep(250);
     return { ok: true, delivery: "waited" };
@@ -175,7 +179,7 @@ export const execute = async (app, operation, node, text, clipboard) => {
   if (operation === "DRILL") return { ok: true, delivery: "looked", root: node.ref_id };
   if (operation === "WIDEN") return { ok: true, delivery: "looked", root: null };
   if (operation === "TYPE_TEXT") {
-    const { route, result } = await enterText(app, node, text, clipboard);
+    const { route, result } = await enterText(app, node, text, clipboard, windowId);
     return { ok: result.ok, delivery: result.data?.disposition?.delivery ?? result.error?.disposition?.delivery ?? null,
       error: result.error ?? null, route };
   }
