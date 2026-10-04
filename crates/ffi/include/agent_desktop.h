@@ -85,9 +85,9 @@
 
 #define AD_EXACT_REF_ENTRY_SIZE 224
 
-#define AD_EXACT_SURFACE_INFO_VERSION 1
+#define AD_EXACT_SURFACE_INFO_VERSION 2
 
-#define AD_EXACT_SURFACE_INFO_SIZE 40
+#define AD_EXACT_SURFACE_INFO_SIZE 48
 
 #define AD_EXACT_WINDOW_INFO_VERSION 2
 
@@ -961,6 +961,13 @@ typedef struct AdExactSurfaceInfo {
   uint32_t size;
   const char *id;
   struct AdSurfaceInfo surface;
+  /**
+   * Comma-separated surface kinds that could not be read for this window
+   * (for example `sheet,menu`), or null when every kind was read. A
+   * missing `sheet` or `menu` entry next to a listed kind is unknown, not
+   * absent. Present from version 2.
+   */
+  const char *unclassified;
 } AdExactSurfaceInfo;
 
 typedef struct AdNodeContent {

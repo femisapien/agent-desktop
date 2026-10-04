@@ -1613,11 +1613,6 @@ branch**, not a series of sub-phase merges, and it is what closes Phase 2.
       distribution of attempts needed was not measured.
     - A window whose owning-process identity cannot be read at Medium integrity
       stays out of the signal inventory. This is a standing limit (A24-15).
-    - The C ABI surface lists (`ad_list_surfaces`, `ad_list_surfaces_exact`)
-      do not carry `SurfaceInfo.unclassified`, so an FFI caller cannot tell a
-      Windows sheet or menu probe that failed from one that found nothing.
-      Carrying it needs an append-only `AdSurfaceInfo` field and a header
-      regeneration; the FFI skill states the gap.
 12. **The ARM64 failure of `contended_artifact_lock_preserves_dispatch_budget`
     was a product defect, not a flaky bound, and it is fixed.** The test passed
     both lanes of run `33698217815` and failed ARM64 in run `33699894842` on
