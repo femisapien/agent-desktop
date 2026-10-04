@@ -93,7 +93,19 @@ impl Drop for MoveableMemory {
             let _ = GlobalFree(self.handle);
         }
         self.handle = ptr::null_mut();
+        #[cfg(test)]
+        FREES.with(|frees| frees.set(frees.get() + 1));
     }
+}
+
+#[cfg(test)]
+thread_local! {
+    static FREES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+pub(crate) fn frees_on_this_thread() -> usize {
+    FREES.with(std::cell::Cell::get)
 }
 
 #[cfg(test)]
