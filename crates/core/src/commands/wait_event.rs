@@ -153,6 +153,7 @@ fn unresolved_target_result(
     };
     Ok(json!({
         "found": true,
+        "target_unresolved": true,
         "event": serde_json::to_value(event)?,
         "elapsed_ms": start.elapsed().as_millis(),
     }))

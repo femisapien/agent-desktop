@@ -411,19 +411,23 @@ agent-desktop wait --event window-opened --window "Untitled" --timeout 10000
 ```
 Blocks until a desktop lifecycle signal is observed, detected by diffing a baseline captured at wait start against fresh reads — no need to know a new window's id or title up front. `--window-id`/`--window` are optional narrowing filters on top of `--event`, never a requirement by themselves (bare `--window` without `--event` instead selects the `wait (window)` mode above).
 
-**`--app` resolves once, at wait start, and that has three consequences worth
-knowing before you rely on it.** The application must already be running:
-every event except `app-launched` resolves the target before the first poll,
-so scoping to a process that does not exist yet returns `APP_NOT_FOUND`
-immediately rather than waiting out the timeout. Use `app-launched` — or an
-unscoped wait — when you are racing a launch. The wait then pins to the one
-process instance it resolved, so a *second* process of the same name starting
-later is invisible to it; if you need any instance of a name, run the wait
-unscoped and filter the event yourself. And a target that dies before that
-resolution completes also reports `APP_NOT_FOUND`, which reads like a bad
-`--app` value but means the opposite: the application existed and its
-disappearance is what broke the lookup. For a disappearance you expect,
-prefer an unscoped wait.
+**`--app` resolves once, at wait start.** What happens when no running
+application matches depends on the event:
+
+- `app-launched`, `window-opened` and `surface-appeared` wait for the
+  application to appear. They spend the timeout polling instead of failing,
+  so they are the ones to use when you are racing a launch.
+- `app-terminated`, `window-closed` and `surface-dismissed` take a missing
+  target as the answer: the wait returns `"found": true` at once, with
+  `"target_unresolved": true`. That covers an application that quit before
+  the wait started. It also covers a misspelled `--app`, so check the name
+  when you did not expect the application to be gone already.
+- `focus-changed` returns `APP_NOT_FOUND`.
+
+A resolved wait pins to the one process instance it found, so a *second*
+process of the same name starting later is invisible to it. If you need any
+instance of a name, run the wait unscoped and filter the event yourself. Two
+running instances of the same name return `AMBIGUOUS_TARGET`.
 
 | Token | Fires when |
 |-------|------------|
