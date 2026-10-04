@@ -208,3 +208,18 @@ fn a_menuitem_that_answers_no_expand_collapse_is_complete() {
         ],
     ));
 }
+
+/// A WinForms drop-down list on build 17763 is a `combobox` whose provider
+/// answers that it has no `ExpandCollapse` pattern. Demanding an expand state
+/// it can never report made every action on it time out at the visibility
+/// gate.
+#[test]
+fn an_expandable_role_whose_provider_answers_no_pattern_is_complete() {
+    assert!(complete(
+        "combobox",
+        vec![
+            flag(TreeProperty::ExpandCollapseAvailable, false),
+            absent(TreeProperty::ExpandCollapseState),
+        ],
+    ));
+}
