@@ -6,7 +6,7 @@
 //! the fold and read the verdict back - so they run everywhere the crate
 //! compiles and stay legible next to each other.
 
-use super::{ObservedWindow, inventory_with_menu, surfaces_of};
+use super::{ObservedWindow, inventory_with_menu, modal_classification, surfaces_of};
 use agent_desktop_core::{AdapterError, ErrorCode, ProcessId};
 
 fn window(handle: usize, sheet: Result<bool, AdapterError>) -> ObservedWindow {
@@ -166,4 +166,14 @@ fn a_located_menu_is_carried_back_to_the_caller() {
         .expect("a located menu does not refuse the listing");
 
     assert_eq!(menu, Some(7));
+}
+
+#[test]
+fn a_failed_modal_read_is_unclassified_while_absent_and_known_classify() {
+    use crate::tree::property_outcome::{PropertyOutcome, PropertyValue};
+
+    assert!(modal_classification(PropertyOutcome::Unknown).is_err());
+    assert!(!modal_classification(PropertyOutcome::Absent).unwrap());
+    assert!(modal_classification(PropertyOutcome::Known(PropertyValue::Flag(true))).unwrap());
+    assert!(!modal_classification(PropertyOutcome::Known(PropertyValue::Flag(false))).unwrap());
 }

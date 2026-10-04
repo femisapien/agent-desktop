@@ -3,7 +3,9 @@ use agent_desktop_core::{
 };
 
 use super::automation::root_from_hwnd;
-use super::surfaces::window_is_modal_sheet;
+use super::properties::read_one;
+use super::property_ids::TreeProperty;
+use super::property_outcome::PropertyOutcome;
 use crate::system::menu_state::{MenuLocation, locate_menu};
 use crate::system::window_enum::{EnumeratedWindow, WindowHandle, enumerate_top_level};
 use crate::system::window_identity::{live_window_owner, live_window_title};
@@ -18,9 +20,10 @@ use crate::system::window_ops::{is_foreground_window, passes_filter};
 /// emits, so a surface id is consumed by the window observation path without
 /// a second lookup.
 ///
-/// The classifications are the surface path's own - `window_is_modal_sheet`
-/// and the `menu_state` detector - so this inventory and `snapshot --surface`
-/// can never disagree about what a window or a menu is. Shell surfaces are
+/// The classifications are the surface path's own - the window's
+/// `WindowIsModal` property and the `menu_state` detector - so this inventory
+/// and `snapshot --surface` can never disagree about what a window or a menu
+/// is; a `WindowIsModal` read that failed is reported, not read as false. Shell surfaces are
 /// not in a per-process inventory: they belong to the shell, not to any named
 /// process, and folding them in would make every process appear to own the
 /// taskbar. A process with no windows answers an empty list, which is a
@@ -214,7 +217,20 @@ fn trace_unreadable_window(handle: WindowHandle, error: &AdapterError) {
 /// the window's UIA root exactly as `snapshot --surface sheet` reads it.
 fn is_modal_sheet(handle: WindowHandle, deadline: Deadline) -> Result<bool, AdapterError> {
     let root = root_from_hwnd(handle as isize, deadline)?;
-    Ok(window_is_modal_sheet(&root))
+    modal_classification(read_one(&root, TreeProperty::WindowIsModal))
+}
+
+/// A provider that answered, or that does not implement `WindowIsModal`,
+/// classifies the window; a read that failed is no answer, so the window's
+/// `sheet` classification is reported as unclassified instead of absent.
+pub(crate) fn modal_classification(outcome: PropertyOutcome) -> Result<bool, AdapterError> {
+    match outcome {
+        PropertyOutcome::Unknown => Err(AdapterError::new(
+            ErrorCode::ActionFailed,
+            "the window's WindowIsModal property could not be read",
+        )),
+        outcome => Ok(matches!(outcome.flag(), Some(true))),
+    }
 }
 
 fn menu_surface(menu: &MenuLocation) -> Result<SurfaceInfo, AdapterError> {
