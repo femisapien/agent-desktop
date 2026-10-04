@@ -165,3 +165,32 @@ fn unchecking_a_radio_that_ignores_the_write_suggests_a_sibling() {
     let suggestion = error.suggestion.as_deref().unwrap_or_default();
     assert!(suggestion.contains("sibling radio"), "{suggestion}");
 }
+
+#[test]
+fn unchecking_a_radio_whose_value_is_not_settable_sends_nothing() {
+    let mut target = Scripted::new(&[Some(true)], &[], false);
+    let error = run_check(&mut target, false, false).unwrap_err();
+    assert!(
+        error
+            .suggestion
+            .unwrap_or_default()
+            .contains("sibling radio")
+    );
+    assert_eq!(error.disposition, DeliverySemantics::not_delivered());
+    assert_eq!((target.writes, target.clicks), (0, 0));
+}
+
+#[test]
+fn unchecking_a_radio_that_refuses_the_write_does_not_press_it() {
+    let mut target = Scripted::new(&[Some(true)], &[], true);
+    target.write_accepted = false;
+    let error = run_check(&mut target, false, false).unwrap_err();
+    assert!(
+        error
+            .suggestion
+            .unwrap_or_default()
+            .contains("sibling radio")
+    );
+    assert_eq!(error.disposition, DeliverySemantics::not_delivered());
+    assert_eq!((target.writes, target.clicks), (1, 0));
+}

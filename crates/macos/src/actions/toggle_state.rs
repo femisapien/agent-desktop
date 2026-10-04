@@ -161,6 +161,9 @@ fn run_check(
             None => return Err(after_delivery(state_not_reached())),
         }
     }
+    if !wrote && !press_after_ignored_write {
+        return Err(radio_uncheck_unsupported());
+    }
     let clicked = target
         .click()
         .map_err(|error| if wrote { after_delivery(error) } else { error })?;
@@ -179,7 +182,7 @@ fn ignored_write_step() -> ActionStep {
 fn radio_uncheck_unsupported() -> AdapterError {
     AdapterError::new(
         ErrorCode::ActionFailed,
-        "the radio button ignored the request to uncheck it",
+        "a radio button cannot be unchecked directly",
     )
     .with_details(serde_json::json!({
         "verification": "requested_checked_state_not_observed"
@@ -187,6 +190,7 @@ fn radio_uncheck_unsupported() -> AdapterError {
     .with_suggestion(
         "A radio button cannot be unchecked directly. Select a sibling radio button in the same group instead.",
     )
+    .with_disposition(DeliverySemantics::not_delivered())
 }
 
 fn value_write_step() -> ActionStep {

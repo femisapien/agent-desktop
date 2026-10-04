@@ -208,7 +208,6 @@ fn ref_entry_full_roundtrip_preserves_all_fields() {
     assert_eq!(back, original);
 }
 
-/// Pins the float round trip of a bounds coordinate through the refmap so the bounds hash survives.
 #[test]
 fn refmap_round_trip_keeps_bounds_on_a_rounding_boundary() {
     let bounds = crate::Rect {

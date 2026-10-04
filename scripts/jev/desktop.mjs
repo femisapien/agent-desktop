@@ -106,23 +106,9 @@ export const clipboardGuard = () => {
   };
 };
 
-/**
- * Text goes in through whichever route the application accepts. A direct value
- * write is one verified call, and the applications that refuse it report that
- * refusal, so the paste path runs only when it is needed. A paste arrives whole
- * where one key press per character loses characters and capitals. The paste
- * is tried only when the write says nothing landed and a retry is safe, and the
- * field is read back afterwards, because a paste reports the key press, not the
- * text the field ended up holding.
- */
 const VERIFY_MS = Number(process.env.JEV_VERIFY_MS ?? 2000);
 const VERIFY_INTERVAL_MS = 100;
 
-/**
- * An application applies a paste on its own schedule, so the field is read
- * again until it holds the text or the deadline passes. The paste is never
- * repeated. The last read is returned so a failure can say what was seen.
- */
 const awaitFieldText = async (ref, text) => {
   const deadline = Date.now() + VERIFY_MS;
   for (;;) {
@@ -144,12 +130,7 @@ const verificationFailure = (observed) => ({
  * Text goes in through whichever route the application accepts. A direct value
  * write is one verified call, and the applications that refuse it report that
  * refusal, so the paste path runs only when it is needed. A paste arrives whole
- * where one key press per character loses characters and capitals. The paste
- * is tried only when the write says nothing landed and a retry is safe, and the
- * field is read back afterwards until it holds the text or a deadline passes,
- * because a paste reports the key press, not the text the field ended up
- * holding. A binary that reports no disposition cannot say whether a retry is
- * safe, so the run stops and names that instead of skipping the paste quietly.
+ * where one key press per character loses characters and capitals.
  */
 export const enterText = async (app, node, text, clipboard, windowId = null) => {
   const written = cli("set-value", node.ref_id, text);

@@ -11,7 +11,6 @@ const entry = join(dirname(fileURLToPath(import.meta.url)), "run.mjs");
 const log = join(directory, "commands.jsonl");
 const preload = join(directory, "fetch.mjs");
 
-/** Replays the CLI's observations and delivery results without a real application or model API. */
 const fake = `
 const { appendFileSync } = require('node:fs');
 const { basename } = require('node:path');
