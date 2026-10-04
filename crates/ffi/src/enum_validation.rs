@@ -76,7 +76,7 @@ try_from_c_enum! {
 
 try_from_c_enum! {
     AdScreenshotKind {
-        Screen = 0, FullScreen = 1,
+        Screen = 0, FullScreen = 2,
     }
 }
 
@@ -159,8 +159,12 @@ mod tests {
     #[test]
     fn test_screenshot_kind_valid_range() {
         assert!(AdScreenshotKind::from_c(0).is_some());
-        assert!(AdScreenshotKind::from_c(1).is_some());
-        assert!(AdScreenshotKind::from_c(2).is_none());
+        assert!(
+            AdScreenshotKind::from_c(1).is_none(),
+            "1 was the removed window kind and must never be reused"
+        );
+        assert!(AdScreenshotKind::from_c(2).is_some());
+        assert!(AdScreenshotKind::from_c(3).is_none());
     }
 
     #[test]
@@ -232,7 +236,7 @@ mod tests {
     fn screenshot_kind_boundary_discriminants_map_to_exact_variants() {
         assert_eq!(AdScreenshotKind::from_c(0), Some(AdScreenshotKind::Screen));
         assert_eq!(
-            AdScreenshotKind::from_c(1),
+            AdScreenshotKind::from_c(2),
             Some(AdScreenshotKind::FullScreen)
         );
     }

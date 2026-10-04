@@ -22,7 +22,7 @@
  *     ~/.agent-desktop/ and is keyed to the session.  The envelope carries
  *     data.snapshot_id. Qualified refs already pin the exact snapshot.
  *
- *  4. Act via ad_execute_by_ref(a, "@s8f3k2p9:e5", NULL, &action, policy, &out).
+ *  4. Act via ad_execute_by_ref(a, "@s8f3k2p9:e5", &action, policy, &out).
  *     Build an AdAction by zero-initialising it and setting its kind field to
  *     an AD_ACTION_KIND_* constant plus any kind-specific fields (e.g. .text
  *     for AD_ACTION_KIND_TYPE_TEXT).  policy=0 (Headless) keeps each action's
@@ -423,7 +423,7 @@ enum AdScreenshotKind
 #endif // defined(__cplusplus) || __STDC_VERSION__ >= 202311L
  {
   AD_SCREENSHOT_KIND_SCREEN = 0,
-  AD_SCREENSHOT_KIND_FULL_SCREEN = 1,
+  AD_SCREENSHOT_KIND_FULL_SCREEN = 2,
 };
 #ifndef __cplusplus
 #if __STDC_VERSION__ >= 202311L

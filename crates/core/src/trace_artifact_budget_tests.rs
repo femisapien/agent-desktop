@@ -49,17 +49,24 @@ fn artifact_writes_scan_once_then_use_the_private_ledger() {
     reset_test_scan_count();
     set_test_limits(100, 10, 100);
 
-    write_screenshot(
-        &trace,
-        &trace.join("screens/a.png"),
-        &[1, 2],
-        test_deadline(),
-    )
+    past_lock_contention(|| {
+        write_screenshot(
+            &trace,
+            &trace.join("screens/a.png"),
+            &[1, 2],
+            test_deadline(),
+        )
+    })
     .unwrap();
     assert_eq!(test_scan_count(), 2);
-    write_screenshot(&trace, &trace.join("screens/b.png"), &[3], test_deadline()).unwrap();
-    write_refmap_if_absent(&trace, &trace.join("refmaps/a.json"), &[4, 5]).unwrap();
-    write_refmap_if_absent(&trace, &trace.join("refmaps/b.json"), &[6]).unwrap();
+    past_lock_contention(|| {
+        write_screenshot(&trace, &trace.join("screens/b.png"), &[3], test_deadline())
+    })
+    .unwrap();
+    past_lock_contention(|| write_refmap_if_absent(&trace, &trace.join("refmaps/a.json"), &[4, 5]))
+        .unwrap();
+    past_lock_contention(|| write_refmap_if_absent(&trace, &trace.join("refmaps/b.json"), &[6]))
+        .unwrap();
 
     assert_eq!(test_scan_count(), 2);
     let ledger =
