@@ -187,9 +187,12 @@ fn a_role_that_is_neither_toggleable_nor_expandable_is_complete() {
     ));
 }
 
+/// A failed optional availability read must not hold an ordinary control at
+/// "never looked": the visibility gate would stay unknown and every action on
+/// it would time out.
 #[test]
-fn a_menuitem_whose_expand_availability_read_failed_is_incomplete() {
-    assert!(!complete(
+fn a_menuitem_whose_expand_availability_read_failed_is_still_complete() {
+    assert!(complete(
         "menuitem",
         vec![
             unknown(TreeProperty::ExpandCollapseAvailable),

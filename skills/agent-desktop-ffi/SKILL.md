@@ -135,7 +135,10 @@ plus its explicit `snapshot_id`, to `ad_execute_by_ref` to drive the pipeline
   closed. Use `AdExactRefEntry`, `AdExactWindowInfo`,
   `ad_list_windows_exact`, and the `*_exact` targeting symbols. Likewise,
   `ad_list_surfaces_exact` preserves `SurfaceInfo.id`; the legacy surface list
-  is an observation-only projection that omits it.
+  is an observation-only projection that omits it. Neither list carries the
+  CLI's `unclassified` field, so on Windows a window with no `sheet` or `menu`
+  entry can mean the probe could not read it: confirm through the CLI's
+  `list-surfaces` before treating the surface as absent.
 
 - **Display discovery.** Call `ad_list_displays` before using
   `AdScreenshotTarget.screen_index`. List order is the screenshot index order;

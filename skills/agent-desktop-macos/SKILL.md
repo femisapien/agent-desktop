@@ -19,7 +19,7 @@ Read the core skill first (`agent-desktop skills get desktop`) for the observe, 
 
 ## Requirements
 
-- macOS 12 or later, Intel or Apple Silicon.
+- macOS 13 or later, Intel or Apple Silicon.
 - Accessibility permission for the app that launches agent-desktop (Terminal, iTerm2, Warp, VS Code, Codex). If System Settings lists the `agent-desktop` binary separately, grant it too.
 - Screen Recording permission, only for `screenshot` and for `session start --screenshots` artifacts.
 - Automation permission for System Events, only where a command reports it missing.

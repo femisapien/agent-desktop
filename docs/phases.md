@@ -1613,6 +1613,11 @@ branch**, not a series of sub-phase merges, and it is what closes Phase 2.
       distribution of attempts needed was not measured.
     - A window whose owning-process identity cannot be read at Medium integrity
       stays out of the signal inventory. This is a standing limit (A24-15).
+    - The C ABI surface lists (`ad_list_surfaces`, `ad_list_surfaces_exact`)
+      do not carry `SurfaceInfo.unclassified`, so an FFI caller cannot tell a
+      Windows sheet or menu probe that failed from one that found nothing.
+      Carrying it needs an append-only `AdSurfaceInfo` field and a header
+      regeneration; the FFI skill states the gap.
 12. **The ARM64 failure of `contended_artifact_lock_preserves_dispatch_budget`
     was a product defect, not a flaky bound, and it is fixed.** The test passed
     both lanes of run `33698217815` and failed ARM64 in run `33699894842` on
@@ -1648,11 +1653,17 @@ branch**, not a series of sub-phase merges, and it is what closes Phase 2.
     element. Reporting a failed availability read as "unknown" instead of
     "absent" would change ref allocation for every element on every snapshot,
     so it is not made inside the promotion. The expand-state half of the same
-    cause is fixed: a failed `ExpandCollapse` availability read now leaves the
-    state unobserved instead of complete
-    (`a_menuitem_whose_expand_availability_read_failed_is_incomplete`). The
-    remaining affordance case is a known limit in the release note, and the
-    test names the diverging node and affordance on failure.
+    cause is held to the same rule: a failed `ExpandCollapse` availability read
+    on a non-expandable role leaves the state complete, because counting it as
+    unobserved held the actionability visibility gate at unknown and made an
+    ordinary button's right-click time out on the live suite
+    (`a_menuitem_whose_expand_availability_read_failed_is_still_complete`). An
+    expandable role whose provider answers that it has no `ExpandCollapse`
+    pattern no longer needs an expand state
+    (`an_expandable_role_whose_provider_answers_no_pattern_is_complete`), which
+    unblocked the WinForms drop-down list. The remaining affordance case is a
+    known limit in the release note, and the test names the diverging node and
+    affordance on failure.
 
 **Exit criteria:** `cursor-overlay enable` on Windows draws the overlay and the response reports rendering true through §2.15's field; the overlay's cursor reaches its destination before the action dispatches, which on Windows is enforced rather than sampled — the renderer answers a travel only once the cursor is at its destination, and the caller blocks on that answer before dispatching, so the ordering has no window in which to be wrong. What is measured on Windows is that the answer arrives: a travel queued behind a click flourish is acknowledged well inside its arrival budget, and the end-to-end suite observes the cursor at the destination after a bounded overlaid action. No Windows measurement watches the two events race, because a black-box CLI harness cannot sample inside one synchronous invocation; the ordering itself is pinned by core's mock-adapter test, which is platform-independent; the overlay never takes the foreground, asserted by observation of the foreground window across an overlaid action; `cursor-overlay disable` and session teardown leave no residual window, timer or thread, verified by independent observation; the per-platform contract is stated in `skills/agent-desktop-windows/` and the README; the dogfood gate in its strict form, with every finding carrying exactly one of *fixed here*, *owned elsewhere* or *accepted*; and a written, ordered **promotion checklist** a later session can execute without reading this sub-phase's plan. The checklist must also triage the nineteen `DEFERRED` ledger rows that still name sub-phases which have already merged - 13 at `2.12`, 3 at `2.4`, and singles at `2.8`, `2.10` and `2.14`. `A30-3` recorded a row at `2.15` as well; counting the ledger directly at the close of this sub-phase shows none, so that figure is corrected here rather than carried. Each is either genuinely closed, genuinely out of reach and re-pointed to `post-phase-2`, or real work that needs a home; this sub-phase closed only the four rows that named it, and says so rather than absorbing the rest silently or leaving them unnamed. The promotion itself — `feat/windows-adapter` merged to `main` as one release-noted `feat!` — runs that checklist afterwards and is what closes the phase.
 

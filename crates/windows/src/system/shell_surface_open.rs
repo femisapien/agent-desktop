@@ -164,7 +164,6 @@ pub(super) fn close_row(row: &SurfaceKindRow, deadline: Deadline) -> Result<(), 
     match row.dismiss {
         SurfaceDismiss::None => Ok(()),
         SurfaceDismiss::Escape => {
-            await_foreground(row, deadline)?;
             super::shell_surface_raise::send_chord(
                 &[],
                 super::shell_surface_kinds::VK_ESCAPE,
