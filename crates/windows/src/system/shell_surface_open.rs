@@ -89,6 +89,7 @@ fn poll_until_observed(
     pre_raise_children: &[isize],
 ) -> Result<WindowInfo, AdapterError> {
     let mut interval = std::time::Duration::from_millis(50);
+    let mut foreign_since: Option<std::time::Instant> = None;
     loop {
         if deadline.remaining().is_zero() {
             return Err(timeout_error(
@@ -105,11 +106,12 @@ fn poll_until_observed(
         }
         if let SurfaceFamily::Immersive { landmarks, .. } = &row.family {
             let client = crate::tree::automation::automation_client()?;
-            if super::shell_surface_immersive::raise_presented_foreign_shape(
+            let foreign = super::shell_surface_immersive::raise_presented_foreign_shape(
                 &client,
                 pre_raise_children,
                 landmarks,
-            )? {
+            )?;
+            if foreign_shape_settled(&mut foreign_since, foreign, std::time::Instant::now()) {
                 return Err(super::shell_surface_immersive::foreign_shape_error(
                     landmarks,
                 ));
@@ -119,6 +121,26 @@ fn poll_until_observed(
         std::thread::sleep(interval.min(remaining));
         interval = (interval * 3 / 2).min(std::time::Duration::from_millis(250));
     }
+}
+
+/// How long a raise-presented window must stay landmark-free before it is
+/// called a foreign shape. A surface that is still loading uncloaks before
+/// its tree carries a landmark, and a toast arriving during the raise is a
+/// landmark-free window that is not the surface, so a single poll's answer
+/// would refuse an open that one more poll resolves.
+const FOREIGN_SHAPE_SETTLE: std::time::Duration = std::time::Duration::from_millis(500);
+
+fn foreign_shape_settled(
+    since: &mut Option<std::time::Instant>,
+    foreign_now: bool,
+    now: std::time::Instant,
+) -> bool {
+    if !foreign_now {
+        *since = None;
+        return false;
+    }
+    let first = *since.get_or_insert(now);
+    now.duration_since(first) >= FOREIGN_SHAPE_SETTLE
 }
 
 /// Dismisses a shell surface and returns once it is observed no longer
@@ -142,6 +164,7 @@ pub(super) fn close_row(row: &SurfaceKindRow, deadline: Deadline) -> Result<(), 
     match row.dismiss {
         SurfaceDismiss::None => Ok(()),
         SurfaceDismiss::Escape => {
+            await_foreground(row, deadline)?;
             super::shell_surface_raise::send_chord(
                 &[],
                 super::shell_surface_kinds::VK_ESCAPE,
@@ -356,3 +379,7 @@ mod command_live_tests;
 #[cfg(all(test, target_os = "windows"))]
 #[path = "shell_surface_close_tests.rs"]
 mod close_tests;
+
+#[cfg(test)]
+#[path = "shell_surface_settle_tests.rs"]
+mod settle_tests;

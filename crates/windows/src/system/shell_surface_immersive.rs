@@ -228,7 +228,7 @@ pub(super) fn foreign_shape_error(landmarks: &[&str]) -> AdapterError {
         landmarks.join(", ")
     ))
     .with_details(serde_json::json!({ "kind": "shell_surface_foreign_shape" }))
-    .with_disposition(DeliverySemantics::not_delivered())
+    .with_disposition(DeliverySemantics::delivered_unverified())
 }
 
 /// Whether the candidate's subtree carries one of the kind's landmark
