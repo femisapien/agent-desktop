@@ -242,7 +242,7 @@ function Measure-RefActionLiveLeg {
             throw 'fixture produced no main window handle'
         }
         $ref = Get-FixtureButtonReference -Binary $Binary -WindowHandle $instance.MainWindowHandle
-        $measurement = Measure-CommandInvocation -Executable $Binary -Arguments @('click', $ref.RefId, '--snapshot', $ref.SnapshotId)
+        $measurement = Measure-CommandInvocation -Executable $Binary -Arguments @('click', $ref.RefId)
         $leg = [ordered]@{
             measurable   = $true
             command      = 'click <ref>'
@@ -289,7 +289,7 @@ function Measure-RefActionDeadLeg {
         $ref = Get-FixtureButtonReference -Binary $Binary -WindowHandle $instance.MainWindowHandle
         Stop-ScratchProcess -ProcessId $instancePid
         $killed = $true
-        $measurement = Measure-CommandInvocation -Executable $Binary -Arguments @('click', $ref.RefId, '--snapshot', $ref.SnapshotId) -TimeoutMs 60000
+        $measurement = Measure-CommandInvocation -Executable $Binary -Arguments @('click', $ref.RefId) -TimeoutMs 60000
         $leg = [ordered]@{
             measurable   = $true
             command      = 'click <ref>'

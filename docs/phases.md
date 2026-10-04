@@ -1786,8 +1786,8 @@ screencapturekit = "1.5"
 **FFI parity tests (P2-O16):**
 - `ad_abi_version()` returns a packed `u32` matching the Cargo version; a consumer built against an older ABI major refuses to load a newer one
 - `ad_snapshot` writes a refmap and the same qualified ref resolves via `ad_execute_by_ref` without a prior CLI snapshot on disk
-- `ad_execute_by_ref(adapter, "@s8f3k2p9:e5", AD_ACTION_KIND_CLICK, &out)` produces identical `AdActionResult` to `ad_resolve_element_exact` + `ad_execute_action`
-- `ad_set_log_callback` receives at least one `tracing::debug!` event during an `ad_get_tree` call
+- `ad_execute_by_ref(adapter, "@s8f3k2p9:e5", &action, policy, &out)` with a click action produces identical `AdActionResult` to `ad_resolve_element_exact` + `ad_execute_action`
+- `ad_set_log_callback` receives at least one `tracing::debug!` event during an `ad_get_tree_exact` call
 - Every new `Action` variant round-trips through the `AdAction.kind` i32 → Rust enum conversion without UB on arbitrary bit patterns (extends the existing `fuzz_arbitrary_bit_patterns_never_panic_across_all_enums` suite)
 - After the P2-O16 codegen migration: adding a command file automatically produces its `ad_<name>` wrapper — a regression test asserts the generated wrapper count matches the command registry count
 

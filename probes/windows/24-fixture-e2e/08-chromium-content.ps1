@@ -354,7 +354,7 @@ function Measure-A24StaleRefRate {
     $otherCount = 0
     for ($i = 0; $i -lt $N; $i++) {
         $ref = $Refs[$i % $Refs.Count]
-        $result = Invoke-A24AgentDesktop -Arguments @('is', $ref, '--snapshot', $SnapshotId, '--property', 'checked')
+        $result = Invoke-A24AgentDesktop -Arguments @('is', $ref, '--property', 'checked')
         $status = 'other'
         if ($result -and $result['ok'] -eq $true) { $status = 'ok'; $okCount++ }
         elseif ($result -and $result['error'] -and $result['error']['code'] -eq 'STALE_REF') { $status = 'stale_ref'; $staleCount++ }
@@ -385,14 +385,14 @@ function Measure-A24StaleRefRate {
 
 function Measure-A24SemanticClick {
     param([Parameter(Mandatory = $true)][string]$Ref, [Parameter(Mandatory = $true)][string]$SnapshotId)
-    $clickResult = Invoke-A24AgentDesktop -Arguments @('click', $Ref, '--snapshot', $SnapshotId)
+    $clickResult = Invoke-A24AgentDesktop -Arguments @('click', $Ref)
     $clickOk = ($clickResult -and $clickResult['ok'] -eq $true)
     $clickErrorCode = $null
     if (-not $clickOk -and $clickResult -and $clickResult['error']) { $clickErrorCode = $clickResult['error']['code'] }
     $reobserve = $null
     $reobserveChecked = $null
     if ($clickOk) {
-        $reobserve = Invoke-A24AgentDesktop -Arguments @('is', $Ref, '--snapshot', $SnapshotId, '--property', 'checked')
+        $reobserve = Invoke-A24AgentDesktop -Arguments @('is', $Ref, '--property', 'checked')
         if ($reobserve -and $reobserve['ok'] -eq $true) { $reobserveChecked = [bool]$reobserve['data']['result'] }
     }
     $branch = if ($clickOk -and $reobserveChecked -eq $true) { 'click_verified_by_independent_reobservation' }
