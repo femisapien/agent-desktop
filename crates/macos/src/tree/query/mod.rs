@@ -165,6 +165,12 @@ fn verify_entry_process(entry: &agent_desktop_core::RefEntry) -> Result<(), Adap
     }
 }
 
+/// The app-level lookups read the focused window, so a background window must
+/// be searched itself, or a surface from another window would be returned.
+fn reads_inside_window(window: &agent_desktop_core::WindowInfo) -> bool {
+    !window.state.is_focused
+}
+
 fn resolve_window_surface(
     window: &agent_desktop_core::WindowInfo,
     surface: SnapshotSurface,
@@ -173,6 +179,21 @@ fn resolve_window_surface(
     crate::tree::locator_deadline::remaining(deadline)?;
     let pid = crate::system::process_identity::to_pid_t(window.pid)?;
     let element = match surface {
+        SnapshotSurface::Sheet | SnapshotSurface::Popover | SnapshotSurface::Alert
+            if reads_inside_window(window) =>
+        {
+            let owner = crate::system::window_resolve::window_element_for_info_with_deadline(
+                window, deadline,
+            )?;
+            crate::tree::surfaces::surface_in_window(&owner, surface, deadline)?.ok_or_else(
+                || {
+                    AdapterError::new(
+                        ErrorCode::ElementNotFound,
+                        format!("No open {} in window {}", surface.as_str(), window.id),
+                    )
+                },
+            )?
+        }
         SnapshotSurface::Window => {
             crate::system::window_resolve::window_element_for_info_with_deadline(window, deadline)?
         }
@@ -302,5 +323,21 @@ mod tests {
 
         assert_eq!(error.code, ErrorCode::StaleRef);
         assert_eq!(error.details.unwrap()["kind"], "locator_root_invalid");
+    }
+
+    #[test]
+    fn a_background_window_reads_its_own_surface_and_the_focused_one_reads_the_app() {
+        let mut window = agent_desktop_core::WindowInfo {
+            id: "w-2".into(),
+            title: "Background".into(),
+            app: "TextEdit".into(),
+            pid: agent_desktop_core::ProcessId::try_from(1).unwrap(),
+            process_instance: None,
+            bounds: None,
+            state: agent_desktop_core::WindowState::default(),
+        };
+        assert!(reads_inside_window(&window));
+        window.state.is_focused = true;
+        assert!(!reads_inside_window(&window));
     }
 }
