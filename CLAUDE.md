@@ -137,8 +137,8 @@ agent-desktop/
 │   │       ├── snapshot_ref.rs   # Ref-rooted drill-down (run_from_ref)
 │   │       └── commands/         # one file per command
 │   ├── macos/              # agent-desktop-macos (Phase 1)
-│   ├── windows/            # agent-desktop-windows (stub → Phase 2)
-│   ├── linux/              # agent-desktop-linux (stub → Phase 2)
+│   ├── windows/            # agent-desktop-windows (Phase 2)
+│   ├── linux/              # agent-desktop-linux (stub → Phase 3)
 │   └── ffi/                # agent-desktop-ffi (cdylib + committed C ABI header)
 ├── src/                    # agent-desktop binary (entry point)
 │   ├── main.rs             # entry point, permission check, JSON envelope
@@ -476,13 +476,12 @@ contact with Windows and was deleted. See
 ## Commands
 
 60 commands spanning App/Window, Observation, Interaction, Scroll, Keyboard,
-Mouse, Notifications (macOS), Clipboard, Wait, System (including `session`), and
+Mouse, Notifications, Clipboard, Wait, System (including `session`), and
 Batch. The full surface and per-command reference live in `skills/agent-desktop/`.
-All 60 are implemented on macOS (Phase 1). Windows ships observation, semantic
-actions, input synthesis, process/window lifecycle (`launch`, `close-app`,
-window ops, `press --app`), screenshot, and typed clipboard against the same
-surface; wait-event and shell surfaces remain ahead. Linux (Phase 3) targets the
-same surface. Adding a command: see the Extensibility Pattern above.
+All 60 are implemented on macOS (Phase 1). Windows ships the same surface,
+including event waits, shell surfaces and Action Center notifications, with the
+per-platform limits stated in `skills/agent-desktop-windows/`. Linux (Phase 3)
+targets the same surface. Adding a command: see the Extensibility Pattern above.
 
 ## Non-Goals
 

@@ -32,6 +32,10 @@ identical on every platform; this package documents only what differs on
 Windows.
 
 Requires Windows 10 1809+ / Windows Server 2019+ (x64 or ARM64).
+It must run in the interactive desktop session of the signed-in user. Session 0
+(services and SYSTEM tasks), Server Core, the secure desktop (UAC prompts, the
+sign-in screen), a locked desktop and another user's session are not
+supported: observation, actions and capture there fail or return nothing.
 
 ## Capability Table
 
@@ -182,10 +186,13 @@ deliberately excludes shell windows — so the shell round trip routes through
   that is a correct empty answer, not a failure), `snapshot --surface taskbar`
   refs the notification area's tray `button`s, and `snapshot --surface
   system-tray-overflow` (raised first with `open-system-surface`) refs its
-  items. Clicking a tray item by ref is delivered, and the envelope reports
-  `delivery: delivered_unverified` with `retry: unsafe` — a synthesized click
-  cannot confirm what the owning application chose to do with it, so plan for
-  an unverified delivery rather than a confirmed effect.
+  items. Clicking a `system-tray` item by ref is delivered, and the envelope
+  reports `delivery: delivered_unverified` with `retry: unsafe` — a synthesized
+  click cannot confirm what the owning application chose to do with it, so plan
+  for an unverified delivery rather than a confirmed effect. Overflow items read
+  as refs, but a click on one has not been measured: if the flyout is not
+  visible the click is refused by the actionability occlusion check, so raise
+  the flyout with `open-system-surface --surface system-tray-overflow` first.
 
 ## Notifications
 

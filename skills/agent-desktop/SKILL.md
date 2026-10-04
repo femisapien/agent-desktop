@@ -36,6 +36,8 @@ bun install -g --trust agent-desktop
 
 macOS requires macOS 12+; grant Accessibility permission to your terminal, plus Screen Recording for screenshots. Windows requires Windows 10 1809+ / Server 2019+ and needs no permission grant for same-integrity UI Automation targets (elevated targets want an elevated terminal — see the `agent-desktop-windows` skill).
 
+**Shell syntax.** Examples in this skill and its references are written for a POSIX shell (zsh, bash). In Windows PowerShell, quote every ref (`'@s8f3k2p9:e1'`), because a bare `@token` is the splatting operator and the argument disappears; set variables with `$env:NAME = 'value'` instead of `export`; capture output with `$r = agent-desktop ... | ConvertFrom-Json` instead of `$(...)` and `jq`. The `agent-desktop-windows` skill gives the PowerShell form of each Windows workflow.
+
 ## Reference Files
 
 Detailed documentation is split into focused reference files. Read them as needed:

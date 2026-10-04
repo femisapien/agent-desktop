@@ -13,7 +13,7 @@ agent-desktop launch "MyTool" --arg --flag --arg value --env KEY=VALUE --cwd /tm
 agent-desktop launch "MyTool" --no-attach
 agent-desktop launch "TextEdit" --activate
 agent-desktop launch "notepad.exe"                 # Windows: system-directory bare name
-agent-desktop launch "C:\\Windows\\System32\\notepad.exe"
+agent-desktop launch "C:\Windows\System32\notepad.exe"
 agent-desktop launch "Obsidian" --cdp
 agent-desktop launch "Obsidian" --cdp 9229
 ```

@@ -148,6 +148,12 @@ Full consumer guide — entrypoints, ownership, threading, error-handling, build
 
 ## Core Workflow for AI
 
+> **Shell syntax.** The examples below are POSIX shell (zsh, bash). In Windows
+> PowerShell, quote every ref (`'@s8f3k2p9:e1'`) — a bare `@token` is the
+> splatting operator and the argument disappears — use `$env:NAME = 'value'`
+> instead of `export`, and `$r = agent-desktop ... | ConvertFrom-Json` instead
+> of `$(...)` and `jq`.
+
 For dense apps (Slack, VS Code, Notion), use **progressive skeleton traversal** to minimize token usage:
 
 ```bash
@@ -224,8 +230,8 @@ its own cursor; the existing interaction lease coordinates the shared OS
 pointer.
 
 On Windows the overlay draws only for headless semantic actions — a `--headed`
-command sends real pointer input and the overlay is suppressed for the rest of
-that session — and it does not collapse under the OS's reduce-motion
+command sends real pointer input and the overlay is suppressed for that
+command only — and it does not collapse under the OS's reduce-motion
 accessibility preference the way macOS does, a deliberate difference documented
 with its cost in `skills/agent-desktop-windows/SKILL.md`.
 
