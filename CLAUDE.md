@@ -36,7 +36,7 @@ The E2E harness drives the release binary against a real SwiftUI/AppKit fixture 
 
 ## Pre-commit Hook
 
-The repo ships a pre-commit hook at `.githooks/pre-commit` that runs `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, and `cargo test --lib --workspace` against staged Rust changes. Wire it up once after cloning:
+The repo ships a pre-commit hook at `.githooks/pre-commit`. For staged Rust changes it runs the source rules (`scripts/check-rust-file-size.sh`, `scripts/check-no-phase-references.sh`, `scripts/check-stale-ref-constructor-misuse.sh`), `cargo fmt --all -- --check`, and clippy and `cargo test --lib` over the host's package set; with FFI changes staged it also runs the FFI passthrough test and the cbindgen header check. Wire it up once after cloning:
 
 ```bash
 git config core.hooksPath .githooks
@@ -222,7 +222,7 @@ Batch is not a second dispatcher. `src/batch/mod.rs` deserializes JSON entries i
 Numbering follows `docs/phases.md` (the source of truth for phase scope):
 
 - **Phase 1 / 1.5 / 1.6 (completed):** Foundation + macOS MVP, FFI cdylib distribution, and the Playwright-grade foundation contract (capability supertraits, auto-wait, occlusion gate, live locator, ProcessState, envelope 2.1)
-- **Phase 2:** Windows adapter — delivered as sub-phases 2.0–2.15, beginning with a raw-script platform exploration phase, each a <=2,000-LOC PR into the `feat/windows-adapter` integration branch
+- **Phase 2:** Windows adapter — delivered as sub-phases 2.0–2.17, beginning with a raw-script platform exploration phase, each a <=2,000-LOC PR into the `feat/windows-adapter` integration branch
 - **Phase 3:** Linux adapter — same sub-phase template onto `feat/linux-adapter`
 - **Phase 4:** MCP server mode via `--mcp` flag — wraps existing commands
 - **Phase 5:** Daemon, sessions, enterprise quality gates
@@ -459,8 +459,8 @@ for the actionability preflight (`get_live_*`), and `is_protected_process`
 - GitHub Actions macOS runner executes full test suite on every PR
 - Windows and Linux runners execute the core unit tests plus their native platform crate on every PR
 - `cargo tree -p agent-desktop-core` must not contain platform crate names
-- `cargo clippy --all-targets -- -D warnings`
-- `cargo test --workspace`
+- `cargo clippy --all-targets -- -D warnings` over each host's package set
+- `cargo test` over each host's package set
 - Binary size check: fail if release binary exceeds 15MB
 
 ### Core platform-conditional code
@@ -477,7 +477,7 @@ contact with Windows and was deleted. See
 
 60 commands spanning App/Window, Observation, Interaction, Scroll, Keyboard,
 Mouse, Notifications, Clipboard, Wait, System (including `session`), and
-Batch. The full surface and per-command reference live in `skills/agent-desktop/`.
+Batch. The core skill (`skills/agent-desktop/`) covers the loop on every OS; the platform skills (`skills/agent-desktop-macos/`, `skills/agent-desktop-windows/`) cover what differs. `agent-desktop skills get platform` serves the one for the running OS.
 All 60 are implemented on macOS (Phase 1). Windows ships the same surface,
 including event waits, shell surfaces and Action Center notifications, with the
 per-platform limits stated in `skills/agent-desktop-windows/`. Linux (Phase 3)
@@ -493,7 +493,6 @@ targets the same surface. Adding a command: see the Extensibility Pattern above.
 
 ## Reference Documents
 
-- PRD v2.0: `docs/agent_desktop_prd_v2.pdf`
 - Architecture Brainstorm: `docs/brainstorms/2026-02-19-architecture-validation-brainstorm.md`
 - Phase 1 Plan: `docs/plans/2026-02-19-feat-agent-desktop-phase1-foundation-plan.md`
 

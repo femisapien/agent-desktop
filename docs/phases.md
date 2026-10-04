@@ -39,7 +39,7 @@ Most recent shipments against this roadmap:
 - v0.4.0 – v0.4.7 complete the FFI C-ABI surface (load-time handshake, session-scoped adapter, JSON-envelope entrypoints), then land session-first tracing and a trace viewer.
 - Foundation reliability contract (Playwright-grade, U0–U19) completed on `feat/foundation-playwright-grade-contract` — see [Phase 1.6](#phase-16--playwright-grade-foundation-contract-completed).
 - Phase 1.5 completion: v0.1.13 (FFI cdylib on 5 platforms); the FFI C-ABI surface itself (`ad_snapshot` / `ad_execute_by_ref` / `ad_wait` / `ad_version` / `ad_status` / `ad_init` / `ad_abi_version`) completed in v0.4.1.
-- Phase 2: in progress. The entire Windows implementation lands here as dependency-ordered sub-phases 2.0–2.15 into the `feat/windows-adapter` integration branch — nothing Windows defers to a later phase (see the no-convenience-deferral rule in the [Platform Delivery Model](#platform-delivery-model--sub-phases-and-integration-branches)). v0.6.0 already put a real Windows test lane in place; 2.0 (probe corpus) is the first sub-phase PR.
+- Phase 2: in progress. The entire Windows implementation lands here as dependency-ordered sub-phases 2.0–2.17 into the `feat/windows-adapter` integration branch — nothing Windows defers to a later phase (see the no-convenience-deferral rule in the [Platform Delivery Model](#platform-delivery-model--sub-phases-and-integration-branches)). v0.6.0 already put a real Windows test lane in place; 2.0 (probe corpus) is the first sub-phase PR.
 - Phase 3+: planned. See each phase section below for the additive platform work and trait defaults that later phases backfill.
 
 ---
@@ -51,7 +51,7 @@ Most recent shipments against this roadmap:
 | 1 | Foundation + macOS MVP | **Completed** (v0.1.0 – v0.1.14) | macOS |
 | 1.5 | FFI Distribution (C-ABI cdylib) | **Completed** (v0.1.13; C-ABI surface completed v0.4.1) | macOS, Windows, Linux |
 | 1.6 | Playwright-grade Foundation Contract | **Completed** (PR #93) | macOS (contract in core) |
-| 2 | Windows Adapter | **In progress** — sub-phases 2.0–2.16; all Windows scope lands here | macOS, Windows |
+| 2 | Windows Adapter | **In progress** — sub-phases 2.0–2.17; all Windows scope lands here | macOS, Windows |
 | 3 | Linux Adapter | Planned — sub-phases 3.0–3.15 | macOS, Windows, Linux |
 | 4 | MCP Server Mode | Planned | All |
 | 5 | Production Readiness | Planned | All |
@@ -615,7 +615,7 @@ Every substantive change also runs a performance baseline against the merge-base
 
 - [x] README with installation (npm + source), core workflow, command reference, JSON output, ref system, platform support table
 - [x] Architecture diagram
-- [x] Agent skills: `skills/agent-desktop/` (core + macOS references) and `skills/agent-desktop-ffi/`
+- [x] Agent skills: `skills/agent-desktop/` (core, every OS), `skills/agent-desktop-macos/` (macOS platform skill) and `skills/agent-desktop-ffi/`
 
 ---
 
@@ -816,7 +816,7 @@ Every sub-phase below follows the same rendering shape: **Goal** (one or two sen
 
 ## Phase 2 — Windows Adapter
 
-**Status: In progress** — the entire Windows implementation is delivered as sub-phases 2.0–2.15 into the `feat/windows-adapter` integration branch per the [Platform Delivery Model](#platform-delivery-model--sub-phases-and-integration-branches), under its no-convenience-deferral rule: scope moves between these sub-phases, never out of Phase 2. v0.6.0 landed the prerequisite Windows test lane and removed core's unexecutable Win32 layer. This section is the public objective catalogue, the sub-phase implementation contract, and the preserved research (API mappings, capability maps, notification/tray approaches, Electron guidance) that grounds it.
+**Status: In progress** — the entire Windows implementation is delivered as sub-phases 2.0–2.17 into the `feat/windows-adapter` integration branch per the [Platform Delivery Model](#platform-delivery-model--sub-phases-and-integration-branches), under its no-convenience-deferral rule: scope moves between these sub-phases, never out of Phase 2. v0.6.0 landed the prerequisite Windows test lane and removed core's unexecutable Win32 layer. This section is the public objective catalogue, the sub-phase implementation contract, and the preserved research (API mappings, capability maps, notification/tray approaches, Electron guidance) that grounds it.
 
 ### Core invariants (research-driven — from the Phase 2 plan's Headless-First Invariant)
 
@@ -1536,21 +1536,18 @@ branch**, not a series of sub-phase merges, and it is what closes Phase 2.
    the probe corpus cost methodology instead: min-of-seven with the warm-up
    discarded, reported as min with median and max beside it (`A15-13`, applied at
    `A18-7`). The macOS baseline that §2.15 could not take is owed here.
-6a. **Settle the overlay label card's placement, with both adapters in review.**
-   Three findings from this sub-phase's dogfood share one cause and none is
-   Windows-specific: `crates/core/src/cursor_overlay/` owns where the card is
-   placed and both renderers follow it. (1) The card is anchored beside the
-   cursor, and the cursor is on the element being acted on, so at the moment
-   of a click on a menu the card covers the menu that just opened - the
-   overlay hides the result of the action it is narrating. (2) At `--size 4.0`
-   the card flips to the left of the cursor and lands flush against x=0 with
-   no margin, while most of the screen sits empty to the right; the flip is an
-   overflow rule but the result reads as an accident. (3) The default fill is
-   white, so on a white application the card is separated from it only by a
-   hairline border. Each is a cross-platform design decision - a change alters
-   macOS, the GA line - which is why it belongs at the one gate where both
-   adapters are reviewed together rather than inside a Windows sub-phase.
-   **Evidence:** `docs/dogfood-reports/2026-09-02-001-windows-2-16-cursor-overlay-dogfood.md`
+6a. **The overlay label card's placement is accepted for this release.** Three
+   findings from the cursor-overlay dogfood share one cause, and none is
+   Windows-specific: `crates/core/src/cursor_overlay/` places the card beside
+   the cursor for both renderers. (1) At the moment of a click on a menu the
+   card can cover the menu that just opened. (2) At `--size 4.0` the card flips
+   left of the cursor and sits flush against x=0. (3) The default white fill
+   separates the card from a white application only by a hairline border. Each
+   is presentation only: the overlay is opt-in, it never takes the foreground,
+   and it does not change what an action delivers or verifies. They are listed
+   in the promotion release note as known overlay limits, and a placement
+   change, which also changes macOS, is a design decision outside this
+   promotion. **Evidence:** `docs/dogfood-reports/2026-09-02-001-windows-2-16-cursor-overlay-dogfood.md`
    findings D3, D4 and D5.
 
 7. **Multi-agent review of the assembled branch**, one reviewer per subsystem, as
@@ -1607,33 +1604,25 @@ branch**, not a series of sub-phase merges, and it is what closes Phase 2.
     no other observable, ten times the two waits it covers. What the
     promotion reviewer inherits is the rule, not the bug: no observability path
     may wait on a lock for the whole of a caller's deadline.
-13. **A menu item's advertised affordances are not stable under concurrent UIA
-    load, and the defect is unowned.** `the_live_walk_reproduces_the_same_vocabulary_across_three_runs`
-    caught the same `menuitem` reporting `["Expand", "Collapse", "SetFocus"]` on
-    one complete walk and `["Click", "Expand", "Collapse", "SetFocus"]` on
-    another, of one unchanged window. Both walks were complete, so this is not
-    truncation: `into_accessibility_tree` refuses an incomplete tree outright.
-    The extra `Click` is emitted before `Expand`, which places its source at
-    `IsInvokePatternAvailable` rather than at the `LegacyDefaultAction` gate
-    that pushes later. Measured against the fixture in isolation, that property
-    reads `Known(false)` on 40 of 40 live reads and the full walk reports no
-    `Click` on 30 of 30 runs, so the true answer is stable and the divergent
-    read is the anomaly; it appears only while the rest of the suite is driving
-    UIA, roughly one run in three, and never on either hosted CI lane.
-    This matters beyond a flaky test. `available_actions` is what an agent
-    consults to decide what it may do, and an element earns a ref *because* it
-    advertises an action, so an affordance that comes and goes makes both the
-    affordance list and ref allocation nondeterministic for an unchanged
-    element. The reading path compounds it: `ElementProperties::is_true` maps a
-    failed read and a genuine "unavailable" onto the same `false`, so nothing
-    downstream can tell a provider that has no Invoke from a read that did not
-    land. **It is filed rather than fixed here because none of the code
-    involved - `tree/actions.rs`, `tree/cache.rs`, `tree/walker_source.rs` - is
-    touched by §2.16, and changing what an unread affordance means has blast
-    radius across every snapshot and every ref.** The receiving owner needs to
-    settle whether a failed availability read may be reported as an absent
-    affordance at all, and the test now names the diverging node and affordance
-    on failure so the next occurrence is actionable without log archaeology.
+13. **A menu item's advertised affordances can differ under concurrent UIA
+    load, and that is accepted for this release.**
+    `the_live_walk_reproduces_the_same_vocabulary_across_three_runs` caught the
+    same `menuitem` reporting `["Expand", "Collapse", "SetFocus"]` on one
+    complete walk and `["Click", "Expand", "Collapse", "SetFocus"]` on another,
+    of one unchanged window. The extra `Click` comes from
+    `IsInvokePatternAvailable`, which reads `Known(false)` on 40 of 40 isolated
+    reads; the divergent read appears only while the rest of the suite drives
+    UIA, about one run in three, and never on either hosted CI lane. Because
+    `available_actions` decides ref allocation, an affordance that comes and
+    goes can make a ref appear or vanish between snapshots of an unchanged
+    element. Reporting a failed availability read as "unknown" instead of
+    "absent" would change ref allocation for every element on every snapshot,
+    so it is not made inside the promotion. The expand-state half of the same
+    cause is fixed: a failed `ExpandCollapse` availability read now leaves the
+    state unobserved instead of complete
+    (`a_menuitem_whose_expand_availability_read_failed_is_incomplete`). The
+    remaining affordance case is a known limit in the release note, and the
+    test names the diverging node and affordance on failure.
 
 **Exit criteria:** `cursor-overlay enable` on Windows draws the overlay and the response reports rendering true through §2.15's field; the overlay's cursor reaches its destination before the action dispatches, which on Windows is enforced rather than sampled — the renderer answers a travel only once the cursor is at its destination, and the caller blocks on that answer before dispatching, so the ordering has no window in which to be wrong. What is measured on Windows is that the answer arrives: a travel queued behind a click flourish is acknowledged well inside its arrival budget, and the end-to-end suite observes the cursor at the destination after a bounded overlaid action. No Windows measurement watches the two events race, because a black-box CLI harness cannot sample inside one synchronous invocation; the ordering itself is pinned by core's mock-adapter test, which is platform-independent; the overlay never takes the foreground, asserted by observation of the foreground window across an overlaid action; `cursor-overlay disable` and session teardown leave no residual window, timer or thread, verified by independent observation; the per-platform contract is stated in `skills/agent-desktop-windows/` and the README; the dogfood gate in its strict form, with every finding carrying exactly one of *fixed here*, *owned elsewhere* or *accepted*; and a written, ordered **promotion checklist** a later session can execute without reading this sub-phase's plan. The checklist must also triage the nineteen `DEFERRED` ledger rows that still name sub-phases which have already merged - 13 at `2.12`, 3 at `2.4`, and singles at `2.8`, `2.10` and `2.14`. `A30-3` recorded a row at `2.15` as well; counting the ledger directly at the close of this sub-phase shows none, so that figure is corrected here rather than carried. Each is either genuinely closed, genuinely out of reach and re-pointed to `post-phase-2`, or real work that needs a home; this sub-phase closed only the four rows that named it, and says so rather than absorbing the rest silently or leaving them unnamed. The promotion itself — `feat/windows-adapter` merged to `main` as one release-noted `feat!` — runs that checklist afterwards and is what closes the phase.
 
@@ -1754,7 +1743,7 @@ Integration-level tests (Explorer/Notepad/Settings snapshots, click/type/clipboa
 
 **Skill Update:**
 - [x] Create `skills/agent-desktop-windows/`: SKILL.md plus permissions-and-elevation, chromium-and-electron, and troubleshooting references; capability claims are enforced against the adapter by a binary-crate test, and a core-crate coverage test fails when any `.md` under `skills/` is not served from the embedded skills table
-- [x] Update core `SKILL.md`: add Windows platform skill to the skill graph table; update platform support section
+- [x] Core `SKILL.md` routes to the platform skill for the running OS through `agent-desktop skills get platform`; `skills list` marks each platform skill with `platform` and `current`
 - [x] Update `workflows.md`: First-Time Setup covers both platforms; one Windows-specific workflow example added
 
 **README Update:**
@@ -2238,7 +2227,7 @@ Integration-level tests (Files/Terminal/Settings snapshots, click/type/clipboard
 
 **Skill Update:**
 - [ ] Create `skills/agent-desktop-linux/SKILL.md`: AT-SPI2/D-Bus setup and bus detection; Wayland vs X11 differences (input via xdotool/ydotool, clipboard via wl-clipboard/xclip, screenshot via PipeWire/XGetImage); required system tools (`xdotool` or `ydotool`, `xclip` or `wl-clipboard`); Linux error codes and `platform_detail` examples (D-Bus errors, bus not found); troubleshooting guide (bus not running, empty trees, missing tools, Flatpak/Snap permissions)
-- [ ] Update core `SKILL.md`: add Linux platform skill to the skill graph table; update platform support section to show all 3 platforms
+- [ ] Register the Linux skill in `crates/core/src/commands/skills.rs` with `platform: Some("linux")` so `skills get platform` serves it on Linux, and advertise it from npm postinstall on linux
 - [ ] Update `workflows.md`: add cross-platform patterns noting Linux-specific differences; add Linux-specific workflow examples (e.g., GNOME app automation); document display server detection behavior
 
 **README Update:**
