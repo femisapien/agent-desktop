@@ -24,12 +24,6 @@ pub(crate) struct SnapshotArgs {
     pub root: Option<String>,
     #[arg(
         long,
-        value_name = "SNAPSHOT_ID",
-        help = "Snapshot ID to use when resolving --root"
-    )]
-    pub snapshot: Option<String>,
-    #[arg(
-        long,
         value_name = "MS",
         help = "Observation deadline in milliseconds (default 3000; raise for slow Chromium settles)"
     )]

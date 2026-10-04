@@ -37,13 +37,8 @@ pub(super) fn execute(
     let request = resolve_request(args, deadline);
     let mut resolution = match args.root.as_deref() {
         Some(root_ref) => {
-            let (_, local_root_ref) =
-                crate::ref_token::resolve_ref_target(root_ref, args.snapshot.as_deref())?;
-            let entry = crate::commands::helpers::load_ref_entry(
-                root_ref,
-                args.snapshot.as_deref(),
-                context,
-            )?;
+            let (_, local_root_ref) = crate::ref_token::resolve_ref_target(root_ref)?;
+            let entry = crate::commands::helpers::load_ref_entry(root_ref, context)?;
             let handle = adapter.resolve_element_strict(&entry, deadline)?;
             resolve_query(
                 adapter,
@@ -243,7 +238,6 @@ mod tests {
             app: None,
             window_id: None,
             root: None,
-            snapshot: None,
             surface: crate::SnapshotSurface::Window,
             filter: crate::commands::find::FindFilterArgs {
                 role: None,

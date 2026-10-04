@@ -207,7 +207,7 @@ function Invoke-SplitIntegrityWriteLeg {
     $baseline = Get-Target -Target $status -Property 'value'
 
     $medium = Invoke-StagedAgentDesktop -IntegrityLevel Medium -FilePath (Get-SplitIntegrityStagedBinary) -InheritLeaseHandle $LeaseHandle `
-        -Arguments @('set-value', $textInput.RefId, '--snapshot', $textInput.SnapshotId, 'medium-write-attempt') -TimeoutSeconds 20
+        -Arguments @('set-value', $textInput.RefId, 'medium-write-attempt') -TimeoutSeconds 20
     Assert-StagingConfirmedMedium -Staging $medium.Staging
     Assert-MediumActionFailsClosed -Envelope $medium.Envelope -LegLabel 'Invoke-SplitIntegrityWriteLeg'
 

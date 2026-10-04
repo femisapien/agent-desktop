@@ -76,7 +76,7 @@ try_from_c_enum! {
 
 try_from_c_enum! {
     AdScreenshotKind {
-        Screen = 0, Window = 1, FullScreen = 2,
+        Screen = 0, FullScreen = 1,
     }
 }
 
@@ -159,8 +159,8 @@ mod tests {
     #[test]
     fn test_screenshot_kind_valid_range() {
         assert!(AdScreenshotKind::from_c(0).is_some());
-        assert!(AdScreenshotKind::from_c(2).is_some());
-        assert!(AdScreenshotKind::from_c(3).is_none());
+        assert!(AdScreenshotKind::from_c(1).is_some());
+        assert!(AdScreenshotKind::from_c(2).is_none());
     }
 
     #[test]
@@ -232,7 +232,7 @@ mod tests {
     fn screenshot_kind_boundary_discriminants_map_to_exact_variants() {
         assert_eq!(AdScreenshotKind::from_c(0), Some(AdScreenshotKind::Screen));
         assert_eq!(
-            AdScreenshotKind::from_c(2),
+            AdScreenshotKind::from_c(1),
             Some(AdScreenshotKind::FullScreen)
         );
     }

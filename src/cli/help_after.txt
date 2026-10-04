@@ -8,7 +8,7 @@ THE LOOP
 
 REF IDs
   snapshot emits qualified refs such as @s8f3k2p9:e1 in depth-first order; they
-  embed their snapshot ID. Legacy bare @eN input needs --snapshot <snapshot_id>.
+  embed their snapshot ID, and a bare @eN is rejected.
   Refs go stale when the UI changes: STALE_REF and AMBIGUOUS_TARGET mean
   snapshot again and pick a fresh ref. A ref action never guesses between
   candidates. `session start` returns an ID but does not activate later

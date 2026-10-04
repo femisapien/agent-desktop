@@ -65,7 +65,6 @@ pub(super) fn hover(
     hover_command::execute(
         hover_command::HoverArgs {
             ref_id: args.ref_id,
-            snapshot_id: args.snapshot,
             xy: parse_xy_opt(args.xy.as_deref())?,
             duration_ms: args.duration,
             timeout_ms: helpers::normalize_action_timeout_ms(args.timeout_ms),
@@ -90,7 +89,6 @@ pub(super) fn drag(
                 ref_id: args.target.to,
                 xy: parse_xy_opt(args.target.to_xy.as_deref())?,
             },
-            snapshot_id: args.snapshot,
             duration_ms: args.duration,
             drop_delay_ms: args.drop_delay,
             timeout_ms: helpers::normalize_action_timeout_ms(args.timeout_ms),

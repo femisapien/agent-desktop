@@ -139,14 +139,13 @@ impl SystemOps for CrossAppWaitAdapter {
 fn drag_args(snapshot_id: String, scope: WaitForScope) -> DragArgs {
     DragArgs {
         from: DragEndpoint {
-            ref_id: Some("@e1".into()),
+            ref_id: Some(format!("@{}:e1", snapshot_id)),
             xy: None,
         },
         to: DragEndpoint {
-            ref_id: Some("@e2".into()),
+            ref_id: Some(format!("@{}:e2", snapshot_id)),
             xy: None,
         },
-        snapshot_id: Some(snapshot_id),
         duration_ms: None,
         drop_delay_ms: None,
         timeout_ms: None,

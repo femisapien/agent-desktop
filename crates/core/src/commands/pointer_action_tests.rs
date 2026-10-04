@@ -82,11 +82,10 @@ fn point_ref_snapshot() -> String {
     store.save_new_snapshot(&refmap).unwrap()
 }
 
-fn point_args(snapshot_id: &str) -> crate::commands::point_resolve::PointResolveArgs<'_> {
+fn point_args(snapshot_id: &str) -> crate::commands::point_resolve::PointResolveArgs<'static> {
     crate::commands::point_resolve::PointResolveArgs {
-        ref_id: Some("@e1"),
+        ref_id: Some(Box::leak(format!("@{snapshot_id}:e1").into_boxed_str())),
         xy: None,
-        snapshot_id: Some(snapshot_id),
         missing_input_message: "target required",
         headed_requirement: crate::HeadedRequirement::None,
     }

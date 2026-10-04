@@ -258,12 +258,6 @@ pub(crate) struct WaitModeArgs {
 pub(crate) struct WaitPredicateArgs {
     #[arg(
         long,
-        value_name = "SNAPSHOT_ID",
-        help = "Snapshot ID required when --element is a legacy bare @eN ref; omit for a qualified ref"
-    )]
-    pub snapshot: Option<String>,
-    #[arg(
-        long,
         value_name = "PREDICATE",
         help = "Element wait predicate: exists, enabled, visible, actionable, or value"
     )]

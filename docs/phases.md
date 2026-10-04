@@ -124,7 +124,7 @@ Phase 1 is the load-bearing phase. It establishes the shared command path, trait
 | P1-O9 | CI pipeline | GitHub Actions macOS runner executes full test suite on every PR |
 | P1-O10 | Progressive skeleton traversal | Skeleton + drill-down workflow achieves 78%+ token savings on Electron apps |
 
-P1-O3's `@s8f3k2p9:e3` example is the snapshot-qualified ref form current commands accept and emit. Other historical Phase 1 prose in this document may use the shorter legacy bare `@e3` form for brevity — see the Ref System note under [Phase 1.6](#phase-16--playwright-grade-foundation-contract-completed).
+P1-O3's `@s8f3k2p9:e3` example is the snapshot-qualified ref form current commands accept and emit. Other historical Phase 1 prose in this document may show the shorter bare `@e3` for brevity, as shorthand for the qualified form — see the Ref System note under [Phase 1.6](#phase-16--playwright-grade-foundation-contract-completed).
 
 ### Workspace Structure
 
@@ -389,7 +389,7 @@ Platform-agnostic, lives in `agent-desktop-core`:
 
 1. Raw tree: Call `adapter.get_tree(window, opts)`
 2. Filter: Remove invisible/offscreen. Remove empty groups with no interactive descendants. Prune beyond max_depth
-3. Allocate refs: Depth-first. Interactive roles get sequence numbers `e1`, `e2`, etc., emitted snapshot-qualified as `@<snapshot_id>:e1`, `@<snapshot_id>:e2` (e.g. `@s8f3k2p9:e1`). Legacy bare `@e1` remains valid input only with an explicit `--snapshot <id>`. Store in RefMap
+3. Allocate refs: Depth-first. Interactive roles get sequence numbers `e1`, `e2`, etc., emitted snapshot-qualified as `@<snapshot_id>:e1`, `@<snapshot_id>:e2` (e.g. `@s8f3k2p9:e1`). A bare `@e1` is rejected with `INVALID_ARGS` and a suggestion to use the qualified ref. Store in RefMap
 4. Serialize: Omit null fields. Omit empty arrays. Omit bounds in compact mode
 5. Estimate tokens: Optionally warn if exceeding threshold
 
@@ -397,7 +397,7 @@ Snapshot refs persist through `RefStore`. The default namespace stores snapshots
 
 **Progressive Skeleton Traversal:**
 - `--skeleton` flag clamps depth to `min(max_depth, 3)`, annotates truncated containers with `children_count` for agent discovery
-- `--root <REF>` flag starts traversal from a previously-discovered ref instead of window root; `--snapshot <snapshot_id>` selects the ref namespace
+- `--root <REF>` flag starts traversal from a previously-discovered ref instead of window root; the qualified ref names its own snapshot
 - Each truncated skeleton branch exposes its deepest safely resolvable drill target using stable text, native ID, or bounds evidence; anonymous boundaries fall back to their nearest resolvable ancestor
 - Scoped invalidation: re-drilling a ref replaces only that ref's subtree refs, preserving all others
 - Core modules: `ref_alloc.rs` (canonical `allocate_refs` + `RefAllocConfig`), `snapshot_ref.rs` (drill-down flow that delegates allocation to `ref_alloc`)
@@ -648,9 +648,9 @@ crates/ffi/
 ├── build.rs             # 5 lines: bakes install_name = @rpath/libagent_desktop_ffi.dylib on macOS only — no codegen step
 ├── codegen_templates/   # empty, untracked — reserved for the P2-O16 build.rs codegen migration, not wired up today
 ├── include/
-│   └── agent_desktop.h  # committed, drift-checked against the OUT_DIR output; AD_ABI_VERSION_MAJOR = 4
+│   └── agent_desktop.h  # committed, drift-checked against the OUT_DIR output; AD_ABI_VERSION_MAJOR = 5
 ├── src/                 # ad_* extern "C" entrypoints, organized by domain
-│   ├── types/           # 34 one-type-per-file modules (AdAction, AdRect, AdWindowList, ...)
+│   ├── types/           # 34 one-type-per-file modules (AdAction, AdRect, AdExactWindowList, ...)
 │   ├── convert/         # string / rect / window / app / surface / notification helpers
 │   ├── tree/            # BFS flat-tree layout (flatten.rs, get.rs, free.rs)
 │   ├── actions/         # conversion, resolve, execute, result, native_handle
@@ -731,7 +731,7 @@ There is no `ffi-codegen-drift` job. An earlier draft of this document described
 
 ### Forward Compatibility
 
-- Pre-1.0 the ABI is explicitly unstable; consumers pin the artifact version alongside the cdylib version. `AD_ABI_VERSION_MAJOR` is currently `4` and evolves append-only (Phase 1.6).
+- Pre-1.0 the ABI is explicitly unstable; consumers pin the artifact version alongside the cdylib version. `AD_ABI_VERSION_MAJOR` is currently `5` and evolves append-only between majors.
 - Any new `PlatformAdapter` method that lands in Phase 2/3 must add a matching `ad_*` FFI wrapper in the same PR that adds the adapter method.
 - MCP server mode (Phase 4) is a parallel transport, not an FFI consumer — it calls `PlatformAdapter` directly.
 
@@ -739,7 +739,7 @@ There is no `ffi-codegen-drift` job. An earlier draft of this document described
 
 **Resolved:**
 
-- `ad_abi_version()` and `ad_init(expected_major)` ship; consumers call `ad_init` after `dlopen` for a runtime compat check. `AD_ABI_VERSION_MAJOR` is currently `4`.
+- `ad_abi_version()` and `ad_init(expected_major)` ship; consumers call `ad_init` after `dlopen` for a runtime compat check. `AD_ABI_VERSION_MAJOR` is currently `5`.
 - `ad_snapshot`, `ad_execute_by_ref`, `ad_wait`, `ad_version`, and `ad_status` are exported, joined since by `ad_execute_by_ref_timeout`, `ad_trace_export`, and `ad_trace_show`.
 - `ad_set_log_callback(fn(level, msg))` ships; in-process consumers can install a tracing layer for debug output.
 
@@ -791,7 +791,7 @@ Also landed in the same branch, cutting across the units above:
 
 ### Ref System note
 
-Every command that emits or accepts a ref now uses the snapshot-qualified form `@<snapshot_id>:e<n>` (e.g. `@s8f3k2p9:e5`). The bare legacy form `@e5` is still accepted, but only together with an explicit `--snapshot <id>`. Historical prose earlier in this document that predates the qualification (written when refs were process-global) may still show a bare `@e5` for brevity; treat it as shorthand for the qualified form.
+Every command that emits or accepts a ref now uses the snapshot-qualified form `@<snapshot_id>:e<n>` (e.g. `@s8f3k2p9:e5`). A bare `@e5` is rejected with `INVALID_ARGS`. Historical prose earlier in this document that predates the qualification (written when refs were process-global) may still show a bare `@e5` for brevity; treat it as shorthand for the qualified form.
 
 ---
 
@@ -824,7 +824,7 @@ Every sub-phase below follows the same rendering shape: **Goal** (one or two sen
 2. **Skeleton traversal is platform-agnostic.** The novel progressive skeleton pattern (depth-3 clamp + `children_count` annotation + drill-down via `--root @ref` + scoped invalidation via `RefMap::remove_by_root_ref`) lives entirely in `crates/core/src/snapshot_ref.rs`. Windows adapter contributes ~50 LOC glue: `FindAll(TreeScope_Children, TrueCondition)` for `children_count` + fresh `UICacheRequest` per drill-down. The enumeration walker itself is the **raw view**, which is what sub-phase 2.2 shipped (`crates/windows/src/tree/walker_source.rs:31`); the control view is a filter applied to that node set via `IsControlElement`, carried as evidence from 2.3 onward, not a second walk. Raw is a superset of control, so a role map total over `ControlType` stays valid under either.
 3. **Asymmetric event threading.** The future push-based `watch` command (P2-O11) uses main-thread `AXObserver` on macOS (research-confirmed: Apple DTS says all AX is main-thread-only; AXSwift / Hammerspoon / Phoenix all do this); worker-thread MTA `IUIAutomation` event handler on Windows (Microsoft 2025 threading doc: UIA supports cross-thread event delivery). This is distinct from the already-shipped `wait --event`, which is an in-invocation `SignalBaseline` diff, not a subscription — see the naming note under 2.11 below.
 4. **No `inventory` / `linkme` command registry.** Research confirmed neither survives link-GC reliably across ld64, ld-prime, GNU ld, lld, MSVC for cdylib consumers. Any future registry uses `build.rs` filesystem enumeration of `crates/core/src/commands/*.rs` — deterministic, cdylib-safe, zero linker magic. The repository's "one command per file" rule becomes the codegen contract when that migration (P2-O16) lands.
-5. **FFI compatibility gates: shipped.** The ABI handshake (`ad_abi_version()`, `ad_init(expected_major)`) shipped in Phase 1.6; `AD_ABI_VERSION_MAJOR` is currently `4` and evolves append-only. Any new cross-platform ABI surface Phase 2 adds must preserve that handshake, not re-invent it.
+5. **FFI compatibility gates: shipped.** The ABI handshake (`ad_abi_version()`, `ad_init(expected_major)`) shipped in Phase 1.6; `AD_ABI_VERSION_MAJOR` is currently `5` and evolves append-only between majors. Any new cross-platform ABI surface Phase 2 adds must preserve that handshake, not re-invent it.
 6. **`DeliverFiles` replaces `FileDrop`.** Headless-first forbids `NSDraggingSession` on macOS; the new action uses a 4-tier fallback (URL scheme → `NSWorkspace.open` with `activates: false` → pasteboard + `Cmd-V` → AppleScript). Windows primary delivery is app/shell delivery (`ShellExecuteEx`, app URI handlers, `IFileOperation` for filesystem destinations, and `CF_HDROP` clipboard paste where accepted). `IDataObject + DoDragDrop` is an explicit policy-gated fallback/spike for targets that require drag semantics; it is never the default headless path.
 
 ### Windows Engineering Invariants (from the Phase 2 plan, Unit 3)
@@ -1577,11 +1577,34 @@ branch**, not a series of sub-phase merges, and it is what closes Phase 2.
     commit is silently dropped from the release, and consumers get a breaking
     change with no note. Collect them with
     `git log main..feat/windows-adapter --format='%h %s%n%b' | grep -n 'BREAKING CHANGE'`
-    before writing the message. As of §2.16 there is exactly one: `get --property
-    text` became role-conditional, returning the element's value for `textfield`,
-    `combobox`, `listbox`, `datefield` and `timefield` and its accessible name for
-    every other role, where it previously returned the value for all of them. It is
-    a core change with no platform branch, so it lands on macOS too.
+    before writing the message. There are three:
+    - `get --property text` became role-conditional, returning the element's value
+      for `textfield`, `combobox`, `listbox`, `datefield` and `timefield` and its
+      accessible name for every other role, where it previously returned the value
+      for all of them. It is a core change with no platform branch, so it lands on
+      macOS too.
+    - The FFI ABI major is 5. The legacy entrypoints that each have an `*_exact`
+      replacement are removed: `ad_list_surfaces`, `ad_surface_list_count`,
+      `ad_surface_list_get`, `ad_surface_list_free`, `ad_list_windows`,
+      `ad_window_list_count`, `ad_window_list_get`, `ad_window_list_free`,
+      `ad_launch_app`, `ad_release_window_fields`, `ad_get_tree`, `ad_find`,
+      `ad_is`, `ad_focus_window`, `ad_window_op`, `ad_resolve_element` and
+      `ad_execute_ref_action_with_policy`; the opaque `AdSurfaceList` and
+      `AdWindowList` handles go with them. `AdScreenshotKind` loses `WINDOW`
+      (`FULL_SCREEN` is now `1`) and `AdScreenshotTarget` loses `pid`, so
+      `ad_screenshot_window_exact` is the only window capture. `AdRefEntry`,
+      `AdWindowInfo` and `AdSurfaceInfo` remain only as fields embedded in the
+      exact structs. Consumers must rebuild against the regenerated header.
+    - Bare `@eN` ref input is removed. Every ref-taking CLI command, `wait
+      --element`, `snapshot --root`, `find --root`, drag `--from`/`--to`, batch
+      entries and the FFI ref-taking calls accept only the snapshot-qualified
+      `@<snapshot_id>:eN` and fail a bare ref with `INVALID_ARGS`. The `--snapshot`
+      flag that only qualified a bare ref is removed from every command that had
+      it, and batch entries carrying a `snapshot` or `snapshot_id` field are
+      rejected as unknown fields. The FFI `snapshot_id` argument of
+      `ad_execute_by_ref` and `ad_execute_by_ref_timeout` and the
+      `AdWaitPredicate.snapshot_id` field are removed, so `AdWaitPredicate` is
+      40 bytes and `AdWaitArgs` 104.
 11. **Record what is knowingly unverified.** Mixed-DPI overlay mapping is unit-
     tested but was never exercised on a live multi-monitor rig. Every item below
     travels into the release note rather than into a reader's assumption.
@@ -1761,7 +1784,7 @@ screencapturekit = "1.5"
 **FFI parity tests (P2-O16):**
 - `ad_abi_version()` returns a packed `u32` matching the Cargo version; a consumer built against an older ABI major refuses to load a newer one
 - `ad_snapshot` writes a refmap and the same qualified ref resolves via `ad_execute_by_ref` without a prior CLI snapshot on disk
-- `ad_execute_by_ref(adapter, "@s8f3k2p9:e5", AD_ACTION_KIND_CLICK, &out)` produces identical `AdActionResult` to `ad_resolve_element` + `ad_execute_action`
+- `ad_execute_by_ref(adapter, "@s8f3k2p9:e5", AD_ACTION_KIND_CLICK, &out)` produces identical `AdActionResult` to `ad_resolve_element_exact` + `ad_execute_action`
 - `ad_set_log_callback` receives at least one `tracing::debug!` event during an `ad_get_tree` call
 - Every new `Action` variant round-trips through the `AdAction.kind` i32 → Rust enum conversion without UB on arbitrary bit patterns (extends the existing `fuzz_arbitrary_bit_patterns_never_panic_across_all_enums` suite)
 - After the P2-O16 codegen migration: adding a command file automatically produces its `ad_<name>` wrapper — a regression test asserts the generated wrapper count matches the command registry count

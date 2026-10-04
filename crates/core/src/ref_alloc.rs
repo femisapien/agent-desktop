@@ -124,7 +124,7 @@ pub(crate) fn is_collapsible(node: &AccessibilityNode) -> bool {
 
 /// Applies `include_bounds`, `interactive_only`, and `compact` semantics
 /// to a raw adapter tree **without** allocating refs. Used by the FFI
-/// `ad_get_tree` path, which exposes a raw tree (no CLI/JSON ref pipeline).
+/// `ad_get_tree_exact` path, which exposes a raw tree (no CLI/JSON ref pipeline).
 ///
 /// - `include_bounds = false` strips `bounds` from every node.
 /// - `compact = true` collapses single-child chains whose own node has

@@ -1,4 +1,4 @@
 function Get-Status {
     param($Target)
-    Invoke-AgentDesktop -Arguments @('get', $Target.RefId, '--snapshot', $Target.SnapshotId, '--property', 'name')
+    Invoke-AgentDesktop -Arguments @('get', $Target.RefId, '--property', 'name')
 }

@@ -37,7 +37,7 @@ For Automation, open Privacy & Security > Automation and allow the launching app
 
 **Cause.** Large apps (Xcode, Safari with many tabs) have deep trees. A truncated snapshot ran out of its observation budget.
 
-**Fix.** Use `find` when you know the target. Otherwise use `snapshot --skeleton -i --compact`, then `snapshot --root @ref --snapshot <snapshot_id>` to drill down. Add `--window-id` to limit the window.
+**Fix.** Use `find` when you know the target. Otherwise use `snapshot --skeleton -i --compact`, then `snapshot --root @<snapshot_id>:eN` to drill down. Add `--window-id` to limit the window.
 
 ## ACTION_FAILED
 

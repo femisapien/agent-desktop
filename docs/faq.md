@@ -61,7 +61,7 @@ cargo build --profile release-ffi -p agent-desktop-ffi
 
 ## What is the ref system?
 
-`snapshot` assigns qualified refs to interactive elements in depth-first order, such as `@s8f3k2p9:e1`. The embedded snapshot ID removes the separate `--snapshot` flag. Snapshot lookup remains confined to the selected namespace, so refs created under a session still require that session's `--session` or `AGENT_DESKTOP_SESSION` scope. Legacy bare refs such as `@e1` require an explicit `--snapshot` in the same namespace.
+`snapshot` assigns qualified refs to interactive elements in depth-first order, such as `@s8f3k2p9:e1`. The embedded snapshot ID makes every ref self-describing. Snapshot lookup remains confined to the selected namespace, so refs created under a session still require that session's `--session` or `AGENT_DESKTOP_SESSION` scope. A bare `@e1` is rejected with `INVALID_ARGS`.
 
 Interactive roles that receive refs:
 

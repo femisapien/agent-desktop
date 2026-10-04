@@ -185,7 +185,7 @@ fn load_session_snapshot(session_id: &str, snapshot_id: &str) -> RefMap {
 }
 
 fn local_ref(ref_id: &str) -> String {
-    crate::ref_token::resolve_ref_target(ref_id, None)
+    crate::ref_token::resolve_ref_target(ref_id)
         .expect("result refs must be snapshot-qualified")
         .1
 }
@@ -256,10 +256,7 @@ fn test_run_from_ref_explicit_session_snapshot_with_matching_context() {
     let result = run_from_ref_with_context(
         &adapter,
         &drill_opts(),
-        &RefTarget {
-            root_ref_id: "@e1",
-            snapshot_id: Some(&snapshot_id),
-        },
+        &format!("@{snapshot_id}:e1"),
         &context,
         crate::snapshot::DEFAULT_SNAPSHOT_TIMEOUT_MS,
     )

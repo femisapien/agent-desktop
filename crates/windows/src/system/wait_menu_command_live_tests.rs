@@ -67,7 +67,6 @@ fn menu_wait(surface: SurfaceWait, app: String) -> Result<Value, AppError> {
             ..WaitModeArgs::default()
         },
         predicate: WaitPredicateArgs {
-            snapshot_id: None,
             predicate: None,
             value: None,
             action: None,

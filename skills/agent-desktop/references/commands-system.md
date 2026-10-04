@@ -118,7 +118,7 @@ agent-desktop wait --event window-opened --app "Finder"
 Use `wait`, not a fixed sleep. `--timeout` defaults to 30000 ms. Modes:
 
 - **Time.** `wait <ms>` pauses.
-- **Element.** `--predicate` is `exists` (default), `enabled`, `visible`, `actionable`, or `value` (with `--value`). `actionable` checks readiness for `--action` (`click` default, `type`, `set-value`, `clear`). Use `--action type` before a wait-then-type flow. The editability check runs only for editing actions. A qualified `--element @snapshot:eN` uses the snapshot embedded in the ref. `--snapshot` matters only for a legacy bare `@eN`; without it, the wait polls the latest refmap in your session.
+- **Element.** `--predicate` is `exists` (default), `enabled`, `visible`, `actionable`, or `value` (with `--value`). `actionable` checks readiness for `--action` (`click` default, `type`, `set-value`, `clear`). Use `--action type` before a wait-then-type flow. The editability check runs only for editing actions. `--element` takes a qualified ref (`@<snapshot_id>:eN`); the wait polls the snapshot embedded in the ref.
 - **Window.** Waits for a window whose title contains the text. `--app` narrows. On timeout, `details.last_observed` lists the scoped window count and up to eight titles.
 - **Text.** Waits for text anywhere in the app's tree. `--count` adds a count to the result.
 - **Menu.** `--menu` waits for a menu surface to open. `--menu-closed` waits for it to close.

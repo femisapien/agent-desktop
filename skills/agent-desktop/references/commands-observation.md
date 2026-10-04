@@ -4,7 +4,7 @@ Commands that read UI state and never change it. Run `agent-desktop <command> --
 
 ## snapshot
 
-Captures the accessibility tree as JSON. Interactive elements get qualified refs (`@s8f3k2p9:e1`) that embed the snapshot id. Pass them to later commands as they are. A legacy bare `@eN` works only with the matching `--snapshot <snapshot_id>` and in the same session namespace.
+Captures the accessibility tree as JSON. Interactive elements get qualified refs (`@s8f3k2p9:e1`) that embed the snapshot id. Pass them to later commands as they are. A bare `@eN` fails with `INVALID_ARGS`; always use the qualified form.
 
 ```bash
 agent-desktop snapshot --app "System Settings" -i --compact
@@ -24,7 +24,7 @@ Output shape:
       { "ref_id": "@s8f3k2p9:e1", "role": "button", "name": "About", "states": ["focused"] } ] } } }
 ```
 
-Keep `snapshot_id` when a command must resolve against one specific snapshot instead of the latest one. This matters when you interleave several apps or windows.
+Each ref names the snapshot that owns it, so a ref keeps resolving against its own snapshot when you interleave several apps or windows.
 
 Choose the scope:
 

@@ -16,7 +16,6 @@ fn named_find(window_id: &str, name: &str) -> FindArgs {
         app: None,
         window_id: Some(window_id.into()),
         root: None,
-        snapshot: None,
         surface: crate::SnapshotSurface::Window,
         filter: FindFilterArgs {
             name: Some(name.into()),
@@ -44,7 +43,6 @@ fn unfiltered_find(window_id: &str, selection: FindSelectionArgs) -> FindArgs {
         app: None,
         window_id: Some(window_id.into()),
         root: None,
-        snapshot: None,
         surface: crate::SnapshotSurface::Window,
         filter: FindFilterArgs {
             role: None,

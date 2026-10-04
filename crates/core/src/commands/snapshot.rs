@@ -18,7 +18,6 @@ pub struct SnapshotArgs {
     pub surface: SnapshotSurface,
     pub skeleton: bool,
     pub root_ref: Option<String>,
-    pub snapshot_id: Option<String>,
     /// Snapshot deadline in milliseconds. A16-11 measured a cold Chromium
     /// settle at 10-25 s against a hardcoded 3 s deadline, so the caller can
     /// raise it when the post-settle still-thin guidance names
@@ -83,10 +82,7 @@ pub fn execute(
         return format_result(snapshot_ref::run_from_ref_with_context(
             adapter,
             &opts,
-            &snapshot_ref::RefTarget {
-                root_ref_id: &root,
-                snapshot_id: args.snapshot_id.as_deref(),
-            },
+            &root,
             context,
             args.timeout_ms
                 .unwrap_or(snapshot::DEFAULT_SNAPSHOT_TIMEOUT_MS),

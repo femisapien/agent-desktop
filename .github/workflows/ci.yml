@@ -842,8 +842,8 @@ jobs:
   # gated behind #[cfg(feature = "stub-adapter")] so the normal build is
   # unaffected.
   #
-  # Scope note: the ~35 Family-A entrypoints (ad_find, ad_execute_action,
-  # ad_list_windows, ad_screenshot, clipboard, notifications, etc.) are NOT
+  # Scope note: the ~35 Family-A entrypoints (ad_find_exact, ad_execute_action,
+  # ad_list_windows_exact, ad_screenshot, clipboard, notifications, etc.) are NOT
   # covered by this passthrough job. Broader Family-A stub coverage is a
   # documented follow-up.
   #
