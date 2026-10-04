@@ -109,6 +109,8 @@ cp target/release/agent-desktop /usr/local/bin/
 
 Requires Rust 1.89+. On macOS this means macOS 13.0+ with the Xcode command-line tools; on Windows it requires the MSVC toolchain (Visual Studio Build Tools with the "Desktop development with C++" workload).
 
+On macOS, application names use AppKit's localized display name. If it is unavailable, the inventory uses the executable name, then the bundle identifier, while retaining the application's process identity.
+
 ### Permissions
 
 macOS requires Accessibility permission. Screenshots also require Screen Recording permission, and the Notification Center opener requires Automation permission for System Events. Plain permission checks never prompt. Request missing permissions in a bounded isolated helper with:
