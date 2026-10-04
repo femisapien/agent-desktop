@@ -85,6 +85,12 @@ impl ObservationOps for SurfaceAdapter {
         let ObservationRoot::Window(window) = root else {
             panic!("a snapshot observes a window root");
         };
+        if !window.state.accessible {
+            return Err(crate::AdapterError::new(
+                crate::ErrorCode::ActionNotSupported,
+                "Window exists but is not exposed through accessibility",
+            ));
+        }
         if window.id != self.surface_on {
             return Err(crate::AdapterError::new(
                 crate::ErrorCode::ElementNotFound,
@@ -131,8 +137,14 @@ fn alert_options() -> TreeOptions {
 
 #[test]
 fn an_unpinned_alert_is_found_on_whichever_window_holds_it() {
+    let mut sheet_window = app_window("w-sheet", false);
+    sheet_window.state.accessible = false;
     let adapter = SurfaceAdapter {
-        windows: vec![app_window("w-1", true), app_window("w-2", false)],
+        windows: vec![
+            sheet_window,
+            app_window("w-1", true),
+            app_window("w-2", false),
+        ],
         surface_on: "w-2",
     };
 

@@ -112,9 +112,9 @@ fn surface_windows(
 ) -> Result<Vec<WindowInfo>, AppError> {
     use crate::SnapshotSurface::{Alert, Popover, Sheet};
     if window_id.is_none() && matches!(surface, Sheet | Popover | Alert) {
-        let windows = crate::window_lookup::surface_owner_order(windows_for_app(
-            adapter, app_name, deadline,
-        )?);
+        let mut windows = windows_for_app(adapter, app_name, deadline)?;
+        windows.retain(|window| window.state.accessible);
+        let windows = crate::window_lookup::surface_owner_order(windows);
         if !windows.is_empty() {
             return Ok(windows);
         }
