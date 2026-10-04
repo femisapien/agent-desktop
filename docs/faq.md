@@ -14,8 +14,8 @@ No. The core workflow reads native accessibility trees and assigns refs to inter
 |-----------|----------|
 | **Native Rust CLI** | Fast, single binary, no runtime dependencies |
 | **C-ABI cdylib** | Load once from Python, Swift, Go, Ruby, Node, or C instead of forking |
-| **58 Commands** | Observation, interaction, keyboard, mouse, notifications, clipboard, window management, session lifecycle, trace read/export, and bundled `skills` docs |
-| **Snapshot & Refs** | Compact snapshot IDs and deterministic element refs like `@e1`, `@e2` |
+| **60 Commands** | Observation, interaction, keyboard, mouse, notifications, clipboard, window management, session lifecycle, trace read/export, and bundled `skills` docs |
+| **Snapshot & Refs** | Compact snapshot IDs and deterministic element refs like `@s8f3k2p9:e1`, `@s8f3k2p9:e2` |
 | **Structured JSON** | Machine-readable responses with error codes and recovery hints |
 
 ## What makes agent-desktop useful for AI agents?
@@ -38,9 +38,9 @@ No. The core workflow reads native accessibility trees and assigns refs to inter
 | Screenshot | **Yes** | **Yes** | Planned |
 | Clipboard | **Yes** | **Yes** | Planned |
 | App/window management | **Yes** | Yes** | Planned |
-| Notifications | **Yes** | Planned | Planned |
+| Notifications | **Yes** | **Yes** (Action Center) | Planned |
 
-\* `list-surfaces` returns `PLATFORM_NOT_SUPPORTED` on Windows; window and focused-surface observation is fully available.
+\* On Windows, `list-surfaces` inventories each process's `window`, `focused`, `sheet` and `menu` surfaces.
 \*\* `launch` on Windows resolves an absolute path or a bare name found under System32 or the Windows directory, not display names.
 
 ## How do I install agent-desktop?
@@ -72,6 +72,10 @@ Stale ref recovery:
 ```text
 snapshot -> act -> STALE_REF? -> snapshot again -> retry
 ```
+
+## How does an agent learn the tool?
+
+Run `agent-desktop skills get desktop` for the core skill, then `agent-desktop skills get platform` for the skill of the OS the binary runs on. Run `agent-desktop <command> --help` for flags.
 
 ## Is agent-desktop free and open source?
 

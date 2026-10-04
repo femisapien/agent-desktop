@@ -470,7 +470,8 @@ agent-desktop status                     # platform, permissions, session_id, tr
 agent-desktop permissions                # check accessibility/screen-recording/automation
 agent-desktop permissions --request      # request in the bounded isolated helper
 agent-desktop version                    # version string
-agent-desktop skills get desktop --full  # bundled agent guidance
+agent-desktop skills get desktop         # core skill: the observe, act, verify loop
+agent-desktop skills get platform        # skill for the OS this binary runs on
 ```
 
 ## Snapshot Options
@@ -540,12 +541,18 @@ snapshot → act → STALE_REF or AMBIGUOUS_TARGET? → wait/snapshot again → 
 
 ## Development
 
+Every platform adapter compiles on its own OS only, so unscoped workspace commands fail on every host. Scope cargo to the host package set (this is the macOS set):
+
 ```bash
-cargo build                               # debug build
-cargo build --release                     # optimized (<15MB)
-cargo test --lib --workspace              # run tests
-cargo clippy --all-targets -- -D warnings # lint (must pass with zero warnings)
+HOST_PKGS="-p agent-desktop-core -p agent-desktop-macos -p agent-desktop-linux -p agent-desktop -p agent-desktop-ffi"
+
+cargo build $HOST_PKGS                          # debug build
+cargo build --release -p agent-desktop          # optimized (<15MB)
+cargo test $HOST_PKGS --lib                     # library tests
+cargo clippy $HOST_PKGS --all-targets -- -D warnings  # lint (must pass with zero warnings)
 ```
+
+On Windows the set is `-p agent-desktop-core -p agent-desktop-windows -p agent-desktop -p agent-desktop-ffi`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full gates.
 
 ## FAQ
 
