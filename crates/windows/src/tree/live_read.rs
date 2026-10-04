@@ -257,7 +257,10 @@ pub(crate) fn live_element(read: &LiveRead) -> Result<LiveElement, AdapterError>
 /// A toggleable role needs a readable `ToggleState`; the expand half applies
 /// to an expandable role or to any element that advertises `ExpandCollapse`,
 /// matching `states.rs`'s token push, which emits `expanded` for any role.
-/// Every other role trivially satisfies both halves. `gated_number` is the
+/// An element whose `ExpandCollapse` availability read failed may advertise
+/// it, so its expand half applies and stays unobserved: a failed read is
+/// "never looked", not "cannot expand". Every other role trivially satisfies
+/// both halves. `gated_number` is the
 /// accessor `states.rs` builds the state vector with, so it answers the
 /// question the verifier actually has: did a value reach the vector? A gate
 /// that never reported true - the `Absent` of a pattern the provider does not
@@ -271,10 +274,15 @@ fn states_are_complete(read: &LiveRead, role: &str) -> bool {
             .properties
             .gated_number(super::property_ids::TreeProperty::ToggleState)
             .is_some();
+    let expand_available = super::property_ids::TreeProperty::ExpandCollapseAvailable;
     let expand_applies = roles::is_expandable_role(role)
-        || read
-            .properties
-            .is_true(super::property_ids::TreeProperty::ExpandCollapseAvailable);
+        || match read.properties.get(expand_available) {
+            super::property_outcome::PropertyOutcome::Absent => false,
+            super::property_outcome::PropertyOutcome::Unknown => true,
+            super::property_outcome::PropertyOutcome::Known(_) => {
+                read.properties.is_true(expand_available)
+            }
+        };
     let expand_observed = !expand_applies
         || read
             .properties

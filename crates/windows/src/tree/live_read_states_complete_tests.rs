@@ -178,7 +178,30 @@ fn a_role_that_is_neither_toggleable_nor_expandable_is_complete() {
     assert!(complete(
         "button",
         vec![
+            absent(TreeProperty::ExpandCollapseAvailable),
             absent(TreeProperty::ToggleState),
+            absent(TreeProperty::ExpandCollapseState),
+        ],
+    ));
+}
+
+#[test]
+fn a_menuitem_whose_expand_availability_read_failed_is_incomplete() {
+    assert!(!complete(
+        "menuitem",
+        vec![
+            unknown(TreeProperty::ExpandCollapseAvailable),
+            absent(TreeProperty::ExpandCollapseState),
+        ],
+    ));
+}
+
+#[test]
+fn a_menuitem_that_answers_no_expand_collapse_is_complete() {
+    assert!(complete(
+        "menuitem",
+        vec![
+            flag(TreeProperty::ExpandCollapseAvailable, false),
             absent(TreeProperty::ExpandCollapseState),
         ],
     ));
