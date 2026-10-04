@@ -112,7 +112,10 @@ fn surface_windows(
 ) -> Result<Vec<WindowInfo>, AppError> {
     use crate::SnapshotSurface::{Alert, Popover, Sheet};
     if window_id.is_none() && matches!(surface, Sheet | Popover | Alert) {
-        let mut windows = windows_for_app(adapter, app_name, deadline)?;
+        let mut windows = match app_name {
+            Some(_) => windows_for_app(adapter, app_name, deadline)?,
+            None => frontmost_process_windows(adapter, surface, deadline)?,
+        };
         windows.retain(|window| window.state.accessible);
         let windows = crate::window_lookup::surface_owner_order(windows);
         if !windows.is_empty() {
@@ -122,6 +125,20 @@ fn surface_windows(
     Ok(vec![resolve_window_for_surface(
         adapter, app_name, window_id, surface, deadline,
     )?])
+}
+
+fn frontmost_process_windows(
+    adapter: &dyn PlatformAdapter,
+    surface: crate::SnapshotSurface,
+    deadline: crate::Deadline,
+) -> Result<Vec<WindowInfo>, AppError> {
+    let owner = resolve_window_for_surface(adapter, None, None, surface, deadline)?;
+    let mut windows = windows_for_app(adapter, Some(owner.app.as_str()), deadline)?;
+    windows.retain(|window| window.pid == owner.pid);
+    if windows.is_empty() {
+        windows.push(owner);
+    }
+    Ok(windows)
 }
 
 fn observe_first_owner(

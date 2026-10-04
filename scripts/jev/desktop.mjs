@@ -106,7 +106,14 @@ export const clipboardGuard = () => {
   };
 };
 
-const VERIFY_MS = Number(process.env.JEV_VERIFY_MS ?? 2000);
+const verifyWindowMs = (raw) => {
+  const value = Number(raw ?? 2000);
+  if (!Number.isFinite(value) || value < 0 || value > 60000) {
+    throw new Error(`JEV_VERIFY_MS must be a number of milliseconds from 0 to 60000, not ${JSON.stringify(raw)}`);
+  }
+  return value;
+};
+const VERIFY_MS = verifyWindowMs(process.env.JEV_VERIFY_MS);
 const VERIFY_INTERVAL_MS = 100;
 
 const awaitFieldText = async (ref, text) => {
@@ -132,7 +139,7 @@ const verificationFailure = (observed) => ({
  * refusal, so the paste path runs only when it is needed. A paste arrives whole
  * where one key press per character loses characters and capitals.
  */
-export const enterText = async (app, node, text, clipboard, windowId = null) => {
+export const enterText = async ({ app, windowId = null }, node, text, clipboard) => {
   const written = cli("set-value", node.ref_id, text);
   if (written.ok) return { route: "set-value", result: written };
   const failure = written.error;
@@ -158,7 +165,7 @@ export const enterText = async (app, node, text, clipboard, windowId = null) => 
   } } };
 };
 
-export const execute = async (app, operation, node, text, clipboard, windowId = null) => {
+export const execute = async (target, operation, node, text, clipboard) => {
   if (operation === "WAIT") {
     await sleep(250);
     return { ok: true, delivery: "waited" };
@@ -166,7 +173,7 @@ export const execute = async (app, operation, node, text, clipboard, windowId = 
   if (operation === "DRILL") return { ok: true, delivery: "looked", root: node.ref_id };
   if (operation === "WIDEN") return { ok: true, delivery: "looked", root: null };
   if (operation === "TYPE_TEXT") {
-    const { route, result } = await enterText(app, node, text, clipboard, windowId);
+    const { route, result } = await enterText(target, node, text, clipboard);
     return { ok: result.ok, delivery: result.data?.disposition?.delivery ?? result.error?.disposition?.delivery ?? null,
       error: result.error ?? null, route };
   }

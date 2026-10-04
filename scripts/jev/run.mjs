@@ -152,7 +152,7 @@ export const run = async function* (
           return;
         }
       }
-      const outcome = await execute(app, state.operation, node, value, clipboard, windowId);
+      const outcome = await execute({ app, windowId }, state.operation, node, value, clipboard);
       state.steps += 1;
       const turn = {
         step: state.steps,

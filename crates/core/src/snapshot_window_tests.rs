@@ -71,10 +71,15 @@ struct SurfaceAdapter {
 impl ObservationOps for SurfaceAdapter {
     fn list_windows(
         &self,
-        _filter: &WindowFilter,
+        filter: &WindowFilter,
         _deadline: crate::Deadline,
     ) -> Result<Vec<WindowInfo>, crate::AdapterError> {
-        Ok(self.windows.clone())
+        Ok(self
+            .windows
+            .iter()
+            .filter(|window| !filter.focused_only || window.state.is_focused)
+            .cloned()
+            .collect())
     }
 
     fn observe_tree(
@@ -178,4 +183,29 @@ fn a_pinned_window_never_reads_another_windows_alert() {
     .expect("the pinned window has no alert");
 
     assert_eq!(error.code(), "ELEMENT_NOT_FOUND");
+}
+
+#[test]
+fn an_alert_without_app_is_found_on_another_window_of_the_frontmost_app() {
+    let mut other_process = app_window("w-9", false);
+    other_process.pid = crate::ProcessId::new(99);
+    let adapter = SurfaceAdapter {
+        windows: vec![
+            app_window("w-1", true),
+            other_process,
+            app_window("w-2", false),
+        ],
+        surface_on: "w-2",
+    };
+
+    let result = build(
+        &adapter,
+        &alert_options(),
+        None,
+        None,
+        crate::Deadline::after(1_000).unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(result.window.id, "w-2");
 }

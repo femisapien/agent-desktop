@@ -128,7 +128,7 @@ const run = (mode, extra = []) => {
 
 try {
   const started = performance.now();
-  await execute("試験アプリ", "WAIT", null, null, null);
+  await execute({ app: "試験アプリ" }, "WAIT", null, null, null);
   assert.ok(performance.now() - started >= 230, "WAIT actually waits");
 
   const waited = run("wait");
@@ -236,6 +236,17 @@ try {
   assert.equal(closedTop.stop.stop, "window_closed");
   assert.equal(closedTop.stop.error, undefined);
   assert.equal(closedTop.stop.screen.window_id, "w-42");
+
+  for (const bad of ["abc", "Infinity", "-1"]) {
+    writeFileSync(log, "");
+    const refused = spawnSync(process.execPath, ["--import", pathToFileURL(preload).href, entry,
+      "--app", "試験アプリ", "--text", "試験", "試験を完了する"], { cwd: directory, encoding: "utf8", timeout: 10000,
+      env: { ...process.env, JEV_VERIFY_MS: bad, TYPESAFE_API_KEY: "fixture", AGENT_DESKTOP_BIN: process.execPath,
+        JEV_TEST_MODE: "paste_wrong", JEV_TEST_LOG: log } });
+    assert.notEqual(refused.status, 0, `JEV_VERIFY_MS=${bad} is refused`);
+    assert.match(refused.stderr, /JEV_VERIFY_MS must be a number/);
+    assert.equal(readFileSync(log, "utf8"), "", `JEV_VERIFY_MS=${bad} runs no command`);
+  }
 
   for (const tail of [["--window-id"], ["--window-id", "--cursor"]]) {
     const extra = tail;
