@@ -452,11 +452,11 @@ test('prompted skills are a subset of the skill packages that exist', () => {
     }
   }
   assert.match(promptSkillOutputFor('win32'), /lahfir\/agent-desktop-windows/);
-  for (const osPlatform of ['darwin', 'linux']) {
-    assert.doesNotMatch(
-      promptSkillOutputFor(osPlatform),
-      /agent-desktop-(macos|linux)/,
-      `${osPlatform} must not advertise a nonexistent platform skill`,
-    );
-  }
+  assert.match(promptSkillOutputFor('darwin'), /lahfir\/agent-desktop-macos/);
+  assert.doesNotMatch(promptSkillOutputFor('darwin'), /agent-desktop-windows/);
+  assert.doesNotMatch(
+    promptSkillOutputFor('linux'),
+    /agent-desktop-(macos|windows|linux)/,
+    'linux must not advertise a platform skill until one exists',
+  );
 });

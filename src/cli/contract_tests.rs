@@ -137,11 +137,14 @@ fn curated_help_exposes_new_surfaces_and_current_ref_contract() {
     for expected in [
         "mouse-wheel",
         "list-displays",
-        "--file-url",
         "wait --event <kind>",
         "@s8f3k2p9:e1",
         "does not activate",
         "session-owned refs require the same scope",
+        "skills get desktop",
+        "skills get platform",
+        "disposition.retry",
+        "splatting",
     ] {
         assert!(
             help.contains(expected),
@@ -150,6 +153,10 @@ fn curated_help_exposes_new_surfaces_and_current_ref_contract() {
     }
     assert!(!help.contains("current-session pointer"));
     assert!(!help.contains("explicit --snapshot IDs do not require it"));
+    assert!(
+        !help.contains("--full"),
+        "root help must not send every agent to load all references up front"
+    );
 }
 
 #[test]
