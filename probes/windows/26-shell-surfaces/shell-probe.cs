@@ -853,7 +853,7 @@ namespace AgentDesktop.Probe.Shell26
             {
                 foreach (IntPtr d in Native.ChildrenOf(notifyHost))
                 {
-                    if (Native.ClassOf(d) == "ToolbarWindow32") { promotedViaTrayNotify = d; break; }
+                    if (Native.ClassOf(d) != "SysPager") { continue; }
                     foreach (IntPtr e in Native.ChildrenOf(d))
                     {
                         if (Native.ClassOf(e) == "ToolbarWindow32") { promotedViaTrayNotify = e; break; }
