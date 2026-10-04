@@ -90,7 +90,7 @@ fn workspace_snapshot_error(result: &BytesResult) -> AdapterError {
                 .into_owned(),
         )
     };
-    bridge_error("workspace_snapshot", result.status, false).with_details(serde_json::json!({
+    let mut details = serde_json::json!({
         "kind": "appkit_bridge",
         "operation": "workspace_snapshot",
         "status": result.status,
@@ -98,7 +98,11 @@ fn workspace_snapshot_error(result: &BytesResult) -> AdapterError {
         "failure_index": (result.failure_index >= 0).then_some(result.failure_index),
         "failure_pid": (result.failure_pid > 0).then_some(result.failure_pid),
         "retryable": true,
-    }))
+    });
+    if let Some(fields) = details.as_object_mut() {
+        fields.retain(|_, value| !value.is_null());
+    }
+    bridge_error("workspace_snapshot", result.status, false).with_details(details)
 }
 
 #[cfg(target_os = "macos")]
@@ -246,7 +250,7 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn workspace_snapshot_failure_without_context_reports_null_not_sentinels() {
+    fn workspace_snapshot_failure_without_context_omits_the_unset_fields() {
         let result = BytesResult {
             status: 1,
             failure_field: std::ptr::null(),
@@ -257,9 +261,10 @@ mod tests {
         };
 
         let details = workspace_snapshot_error(&result).details.unwrap();
-        assert!(details["failure_field"].is_null());
-        assert!(details["failure_index"].is_null());
-        assert!(details["failure_pid"].is_null());
+        for key in ["failure_field", "failure_index", "failure_pid"] {
+            assert!(details.get(key).is_none(), "{key} is omitted, not null");
+        }
+        assert_eq!(details["status"], 1);
     }
 
     #[cfg(target_os = "macos")]
