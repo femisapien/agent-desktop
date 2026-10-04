@@ -303,6 +303,7 @@ mod tests {
             kind: "window".into(),
             title: None,
             item_count: Some(3),
+            unclassified: Vec::new(),
         });
         let list = Box::into_raw(Box::new(AdExactSurfaceList {
             items: vec![item].into_boxed_slice(),

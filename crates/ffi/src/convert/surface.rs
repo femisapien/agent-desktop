@@ -99,6 +99,7 @@ mod tests {
             kind: "menu".into(),
             title: None,
             item_count: Some(3),
+            unclassified: Vec::new(),
         };
         let c = surface_info_to_c(&s);
         assert_eq!(unsafe { c_to_string(c.kind) }.as_deref(), Some("menu"));
@@ -115,6 +116,7 @@ mod tests {
             kind: "window".into(),
             title: Some("Preferences".into()),
             item_count: Some(8),
+            unclassified: Vec::new(),
         };
         let mut exact = exact_surface_info_to_c(&surface);
 
@@ -160,6 +162,7 @@ mod tests {
             kind: "menu".into(),
             title: None,
             item_count: None,
+            unclassified: Vec::new(),
         };
         let c = surface_info_to_c(&s);
         assert_eq!(c.item_count, -1);
@@ -174,6 +177,7 @@ mod tests {
             kind: "popover".into(),
             title: None,
             item_count: Some(0),
+            unclassified: Vec::new(),
         };
         let c = surface_info_to_c(&s);
         assert_eq!(
@@ -191,6 +195,7 @@ mod tests {
             kind: "sheet".into(),
             title: Some("Save Panel".into()),
             item_count: None,
+            unclassified: Vec::new(),
         };
         let c = surface_info_to_c(&s);
         assert!(!c.title.is_null());

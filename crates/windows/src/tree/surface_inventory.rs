@@ -99,6 +99,7 @@ fn surface(kind: SnapshotSurface, handle: WindowHandle, title: Option<String>) -
         kind: kind.as_str().to_string(),
         title,
         item_count: None,
+        unclassified: Vec::new(),
     }
 }
 
@@ -113,18 +114,23 @@ pub(crate) struct ObservedWindow {
 }
 
 /// One window whose UIA root cannot be read costs that window its `sheet`
-/// classification and nothing else. Propagating it discarded every surface
-/// already collected for the process, so a single hung window erased its
-/// responsive siblings from the inventory - where the observation path
-/// reports the partial it did observe rather than a discard.
+/// classification and nothing else. Its `window` entry names `sheet` as
+/// unclassified, so the missing entry does not read as "no dialog open" -
+/// and a modal dialog is the likeliest reason a window stops answering UIA.
+/// Propagating the fault discarded every surface already collected for the
+/// process, so a single hung window erased its responsive siblings from the
+/// inventory - where the observation path reports the partial it did observe
+/// rather than a discard.
 pub(crate) fn surfaces_of(observed: Vec<ObservedWindow>) -> Vec<SurfaceInfo> {
     let mut surfaces = Vec::new();
     for window in observed {
-        surfaces.push(surface(
-            SnapshotSurface::Window,
-            window.handle,
-            window.title.clone(),
-        ));
+        let mut entry = surface(SnapshotSurface::Window, window.handle, window.title.clone());
+        if window.sheet.is_err() {
+            entry
+                .unclassified
+                .push(SnapshotSurface::Sheet.as_str().to_string());
+        }
+        surfaces.push(entry);
         if window.foreground {
             surfaces.push(surface(
                 SnapshotSurface::Focused,
@@ -147,9 +153,10 @@ pub(crate) fn surfaces_of(observed: Vec<ObservedWindow>) -> Vec<SurfaceInfo> {
 ///
 /// A menu probe that faults says nothing about the windows, which were read
 /// from the window census rather than from UIA - so it costs the process its
-/// `menu` classification and nothing else. Propagating it discarded every
-/// window surface already collected, which is the same erasure a failed modal
-/// probe used to cause.
+/// `menu` classification and nothing else, and each `window` entry names
+/// `menu` as unclassified. Propagating it discarded every window surface
+/// already collected, which is the same erasure a failed modal probe used to
+/// cause.
 ///
 /// A budget exhaustion and a process that has died are not that: neither is
 /// evidence that no menu is open, and answering "no menu" for a probe that
@@ -168,9 +175,19 @@ pub(crate) fn inventory_with_menu<T>(
         Err(error) if refuses_the_listing(&error) => Err(error),
         Err(error) => {
             trace_unreadable_menu(pid, &error);
-            Ok((surfaces, None))
+            Ok((mark_menu_unread(surfaces), None))
         }
     }
+}
+
+fn mark_menu_unread(mut surfaces: Vec<SurfaceInfo>) -> Vec<SurfaceInfo> {
+    let window = SnapshotSurface::Window.as_str();
+    for entry in surfaces.iter_mut().filter(|entry| entry.kind == window) {
+        entry
+            .unclassified
+            .push(SnapshotSurface::Menu.as_str().to_string());
+    }
+    surfaces
 }
 
 fn refuses_the_listing(error: &AdapterError) -> bool {
@@ -207,6 +224,7 @@ fn menu_surface(menu: &MenuLocation) -> Result<SurfaceInfo, AdapterError> {
         kind: SnapshotSurface::Menu.as_str().to_string(),
         title,
         item_count,
+        unclassified: Vec::new(),
     })
 }
 

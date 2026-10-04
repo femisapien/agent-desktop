@@ -48,6 +48,15 @@ fn one_unreadable_window_does_not_erase_the_windows_beside_it() {
         surfaces.iter().any(|s| s.id == "w-3" && s.kind == "sheet"),
         "the third window's sheet survives the second window's failed probe"
     );
+    let unclassified = |id: &str| {
+        surfaces
+            .iter()
+            .find(|s| s.id == id && s.kind == "window")
+            .map(|s| s.unclassified.clone())
+    };
+    assert_eq!(unclassified("w-2"), Some(vec!["sheet".to_string()]));
+    assert_eq!(unclassified("w-1"), Some(Vec::new()));
+    assert_eq!(unclassified("w-3"), Some(Vec::new()));
 }
 
 #[test]
@@ -99,6 +108,9 @@ fn a_faulted_menu_probe_leaves_the_window_surfaces_standing() {
 
     assert!(menu.is_none(), "no menu was located");
     assert_eq!(kinds(&surfaces), vec!["window", "window", "sheet"]);
+    for entry in surfaces.iter().filter(|s| s.kind == "window") {
+        assert_eq!(entry.unclassified, vec!["menu".to_string()]);
+    }
 }
 
 /// The other direction, and the reason the fold is not a blanket degrade:
@@ -145,6 +157,7 @@ fn a_completed_probe_that_found_no_menu_is_an_absence() {
 
     assert!(menu.is_none());
     assert_eq!(kinds(&surfaces), vec!["window"]);
+    assert!(surfaces[0].unclassified.is_empty());
 }
 
 #[test]

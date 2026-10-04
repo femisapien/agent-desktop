@@ -393,6 +393,12 @@ an open menu as one `menu` surface carrying `item_count`. Shell surfaces
 belong to the OS rather than to any process and never appear here — use
 `snapshot --surface <kind>` for those.
 
+On Windows, a `window` entry can carry `"unclassified": ["sheet"]` or
+`["menu"]`. That means the check for that surface kind could not read the
+window, often because the app is busy or a modal dialog has stopped it from
+answering. Treat a missing `sheet` or `menu` entry as unknown in that case,
+not as absent.
+
 ## open-system-surface
 
 Raise a shell surface and get the identity of the window it actually
