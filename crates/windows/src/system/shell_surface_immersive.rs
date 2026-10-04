@@ -1,4 +1,4 @@
-﻿//! The immersive family's resolver: the half of the shell-surface seam the
+//! The immersive family's resolver: the half of the shell-surface seam the
 //! Win32 top-level walk cannot reach (A26-1). The resolver walks the UIA
 //! root's children and matches the first child whose class, hosting shell
 //! process, landmark and cloak state name the kind's surface; the landmark
@@ -111,14 +111,27 @@ fn shell_host_child(
         Err(_) => return None,
     };
     let image = super::process_identity::process_image_name(pid)?;
-    let image_stem = image.strip_suffix(".exe").unwrap_or(&image);
-    if !host_images
-        .iter()
-        .any(|host| host.eq_ignore_ascii_case(image_stem))
-    {
+    if !is_host_image(&image, host_images) {
         return None;
     }
     Some((handle, pid, image))
+}
+
+/// Whether a process image is one of the shell hosts a surface row names.
+pub(super) fn is_host_image(image: &str, host_images: &[&str]) -> bool {
+    let stem = image.strip_suffix(".exe").unwrap_or(image);
+    host_images
+        .iter()
+        .any(|host| host.eq_ignore_ascii_case(stem))
+}
+
+/// Whether one of the row's shell hosts owns this window. Start hands its
+/// foreground to a search window that is its own top-level window rather than
+/// a descendant of the overlay, so the host process is what identifies it.
+pub(super) fn window_hosted_by(handle: WindowHandle, host_images: &[&str]) -> bool {
+    super::window_identity::live_window_owner(handle)
+        .and_then(super::process_identity::process_image_name)
+        .is_some_and(|image| is_host_image(&image, host_images))
 }
 
 fn immersive_candidate(

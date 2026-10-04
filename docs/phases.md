@@ -1590,8 +1590,10 @@ branch**, not a series of sub-phase merges, and it is what closes Phase 2.
       `ad_launch_app`, `ad_release_window_fields`, `ad_get_tree`, `ad_find`,
       `ad_is`, `ad_focus_window`, `ad_window_op`, `ad_resolve_element` and
       `ad_execute_ref_action_with_policy`; the opaque `AdSurfaceList` and
-      `AdWindowList` handles go with them. `AdScreenshotKind` loses `WINDOW`
-      (`FULL_SCREEN` is now `1`) and `AdScreenshotTarget` loses `pid`, so
+      `AdWindowList` handles go with them. `AdScreenshotKind` loses `WINDOW`;
+      `FULL_SCREEN` keeps `2`, and the removed value `1` is rejected as
+      invalid so an old caller fails instead of capturing something else.
+      `AdScreenshotTarget` loses `pid`, so
       `ad_screenshot_window_exact` is the only window capture. `AdRefEntry`,
       `AdWindowInfo` and `AdSurfaceInfo` remain only as fields embedded in the
       exact structs. Consumers must rebuild against the regenerated header.

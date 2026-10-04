@@ -164,6 +164,7 @@ pub(super) fn close_row(row: &SurfaceKindRow, deadline: Deadline) -> Result<(), 
     match row.dismiss {
         SurfaceDismiss::None => Ok(()),
         SurfaceDismiss::Escape => {
+            await_foreground(row, deadline)?;
             super::shell_surface_raise::send_chord(
                 &[],
                 super::shell_surface_kinds::VK_ESCAPE,
@@ -260,18 +261,24 @@ fn poll_with_cap(
 /// foreground window can be a descendant of the surface rather than the
 /// surface itself - the Start overlay's foreground is the search input's own
 /// window inside it (A26-9) - so ownership is read at the foreground window's
-/// root rather than by equality with it.
+/// root. On builds where Start's search window is its own top-level window,
+/// an immersive surface also owns a foreground its shell host owns.
 #[cfg(target_os = "windows")]
 fn surface_owns_foreground(row: &SurfaceKindRow, deadline: Deadline) -> Result<bool, AdapterError> {
     use windows_sys::Win32::UI::WindowsAndMessaging::{GA_ROOT, GetAncestor, GetForegroundWindow};
 
-    let Some(top) = surface_top_handle(row, deadline)? else {
-        return Ok(false);
-    };
     let foreground = unsafe { GetForegroundWindow() };
     if foreground.is_null() {
         return Ok(false);
     }
+    if let SurfaceFamily::Immersive { host_images, .. } = &row.family {
+        if super::shell_surface_immersive::window_hosted_by(foreground, host_images) {
+            return Ok(true);
+        }
+    }
+    let Some(top) = surface_top_handle(row, deadline)? else {
+        return Ok(false);
+    };
     Ok(unsafe { GetAncestor(foreground, GA_ROOT) } == top)
 }
 

@@ -248,11 +248,13 @@ pub(crate) fn shell_declined_the_surface(error: &AdapterError) -> bool {
     let overflow_absent =
         error.code == ErrorCode::WindowNotFound && error.message.contains("overflow");
     let foreign_shape = details_kind_is(error, "shell_surface_foreign_shape");
+    let declined_foreground = details_kind_is(error, "shell_surface_declined_foreground");
     raise_never_presented
         || close_never_dismissed
         || chevron_absent
         || overflow_absent
         || foreign_shape
+        || declined_foreground
 }
 
 /// Maps a raise-or-resolve precondition onto the loud-skip convention, with
