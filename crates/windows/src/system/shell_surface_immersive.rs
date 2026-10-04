@@ -125,13 +125,30 @@ pub(super) fn is_host_image(image: &str, host_images: &[&str]) -> bool {
         .any(|host| host.eq_ignore_ascii_case(stem))
 }
 
-/// Whether one of the row's shell hosts owns this window. Start hands its
-/// foreground to a search window that is its own top-level window rather than
-/// a descendant of the overlay, so the host process is what identifies it.
-pub(super) fn window_hosted_by(handle: WindowHandle, host_images: &[&str]) -> bool {
-    super::window_identity::live_window_owner(handle)
+/// Whether this top-level window is the row's own surface: one of its shell
+/// hosts owns it and its tree carries one of its landmarks. The host alone is
+/// not an identity - Start and the Action Center can share one - and Start can
+/// hand its foreground to a search window outside the overlay, so the overlay's
+/// handle alone is not one either.
+pub(super) fn window_is_surface(
+    handle: WindowHandle,
+    host_images: &[&str],
+    landmarks: &[&str],
+) -> Result<bool, AdapterError> {
+    let hosted = super::window_identity::live_window_owner(handle)
         .and_then(super::process_identity::process_image_name)
-        .is_some_and(|image| is_host_image(&image, host_images))
+        .is_some_and(|image| is_host_image(&image, host_images));
+    if !hosted {
+        return Ok(false);
+    }
+    let narrow = super::listing_retry::narrow_to_permitted_codes;
+    let client = crate::tree::automation::automation_client().map_err(narrow)?;
+    let Ok(element) =
+        client.element_from_handle(uiautomation::types::Handle::from(handle as isize))
+    else {
+        return Ok(false);
+    };
+    carries_landmark(&client, &element, landmarks)
 }
 
 fn immersive_candidate(
