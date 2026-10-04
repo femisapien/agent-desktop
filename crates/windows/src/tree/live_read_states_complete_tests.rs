@@ -160,6 +160,7 @@ fn a_toggleable_role_reports_completeness_only_when_toggle_state_was_read() {
     assert!(complete(
         "checkbox",
         vec![
+            absent(TreeProperty::ExpandCollapseAvailable),
             flag(TreeProperty::ToggleAvailable, true),
             number(TreeProperty::ToggleState, 1),
         ],
@@ -167,6 +168,7 @@ fn a_toggleable_role_reports_completeness_only_when_toggle_state_was_read() {
     assert!(!complete(
         "checkbox",
         vec![
+            absent(TreeProperty::ExpandCollapseAvailable),
             flag(TreeProperty::ToggleAvailable, true),
             unknown(TreeProperty::ToggleState),
         ],
