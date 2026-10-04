@@ -148,29 +148,35 @@ Full consumer guide — entrypoints, ownership, threading, error-handling, build
 
 ## Core Workflow for AI
 
+> **Shell syntax.** The examples below are POSIX shell (zsh, bash). In Windows
+> PowerShell, quote every ref (`'@s8f3k2p9:e1'`) — a bare `@token` is the
+> splatting operator and the argument disappears — use `$env:NAME = 'value'`
+> instead of `export`, and `$r = agent-desktop ... | ConvertFrom-Json` instead
+> of `$(...)` and `jq`.
+
 For dense apps (Slack, VS Code, Notion), use **progressive skeleton traversal** to minimize token usage:
 
 ```bash
 # 1. Shallow overview — depth-3 map, truncated containers show children_count
 agent-desktop snapshot --skeleton --app Slack -i --compact
-# Keep snapshot_id, for example s8f3k2p9
+# Refs are qualified with their snapshot ID, for example @s8f3k2p9:e3
 
 # 2. Drill into a region of interest (each truncated branch exposes a safe drill ref)
-agent-desktop snapshot --root @e3 --snapshot s8f3k2p9 -i --compact
+agent-desktop snapshot --root @s8f3k2p9:e3 -i --compact
 
 # 3. Act on an element found in the drill-down
-agent-desktop click @e12 --snapshot s8f3k2p9
+agent-desktop click @s8f3k2p9:e12
 
 # 4. Re-drill the same region to verify the state change
-agent-desktop snapshot --root @e3 --snapshot s8f3k2p9 -i --compact
+agent-desktop snapshot --root @s8f3k2p9:e3 -i --compact
 ```
 
 For simple apps, a full snapshot is fine:
 
 ```bash
-agent-desktop snapshot --app Finder -i   # get interactive elements with refs and snapshot_id
-agent-desktop click @e3 --snapshot s8f3k2p9  # click a button by ref
-agent-desktop type @e5 --snapshot s8f3k2p9 "quarterly report"  # insert text into a field
+agent-desktop snapshot --app Finder -i   # get interactive elements with qualified refs
+agent-desktop click @s8f3k2p9:e3  # click a button by ref
+agent-desktop type @s8f3k2p9:e5 "quarterly report"  # insert text into a field
 agent-desktop press cmd+s               # keyboard shortcut
 agent-desktop snapshot -i               # re-observe after UI changes
 ```
@@ -206,7 +212,6 @@ export AGENT_DESKTOP_SESSION=<session_id>
 agent-desktop snapshot --app Xcode -i --compact          # uses selected session + tracing
 agent-desktop wait --element @s8f3k2p9:e9 --predicate actionable --timeout 5000
 agent-desktop click @s8f3k2p9:e9
-agent-desktop click @e9 --snapshot s2                    # legacy bare ref, explicitly pinned
 agent-desktop session end "$AGENT_DESKTOP_SESSION"
 agent-desktop session gc
 ```
@@ -224,8 +229,8 @@ its own cursor; the existing interaction lease coordinates the shared OS
 pointer.
 
 On Windows the overlay draws only for headless semantic actions — a `--headed`
-command sends real pointer input and the overlay is suppressed for the rest of
-that session — and it does not collapse under the OS's reduce-motion
+command sends real pointer input and the overlay is suppressed for that
+command only — and it does not collapse under the OS's reduce-motion
 accessibility preference the way macOS does, a deliberate difference documented
 with its cost in `skills/agent-desktop-windows/SKILL.md`.
 
@@ -321,8 +326,8 @@ agent-desktop snapshot --app Safari -i           # accessibility tree with refs
 agent-desktop snapshot --surface menu            # capture open menu
 agent-desktop screenshot --app Finder            # PNG screenshot
 agent-desktop find --role button --app TextEdit  # search by role, name, value, text
-agent-desktop get @e3 --snapshot s8f3k2p9 --property value  # read element property
-agent-desktop is @e7 --snapshot s8f3k2p9 --property checked # check boolean state
+agent-desktop get @s8f3k2p9:e3 --property value  # read element property
+agent-desktop is @s8f3k2p9:e7 --property checked # check boolean state
 agent-desktop list-surfaces --app Notes          # list menus, sheets, popovers, alerts
 ```
 
@@ -439,8 +444,8 @@ agent-desktop wait --menu --timeout 3000                     # wait for menu
 
 ```bash
 agent-desktop batch '[
-  {"command": "click", "args": {"ref_id": "@e2", "snapshot": "<snapshot_id>"}},
-  {"command": "type", "args": {"ref_id": "@e5", "snapshot": "<snapshot_id>", "text": "hello"}},
+  {"command": "click", "args": {"ref_id": "@<snapshot_id>:e2"}},
+  {"command": "type", "args": {"ref_id": "@<snapshot_id>:e5", "text": "hello"}},
   {"command": "press", "args": {"combo": "return"}}
 ]' --stop-on-error
 
@@ -464,7 +469,8 @@ agent-desktop status                     # platform, permissions, session_id, tr
 agent-desktop permissions                # check accessibility/screen-recording/automation
 agent-desktop permissions --request      # request in the bounded isolated helper
 agent-desktop version                    # version string
-agent-desktop skills get desktop --full  # bundled agent guidance
+agent-desktop skills get desktop         # core skill: the observe, act, verify loop
+agent-desktop skills get platform        # skill for the OS this binary runs on
 ```
 
 ## Snapshot Options
@@ -483,7 +489,6 @@ agent-desktop snapshot [OPTIONS]
 | `--max-depth <N>` | 10 | Maximum tree depth |
 | `--skeleton` | off | Shallow 3-level overview; truncated containers show `children_count` and get refs as drill targets |
 | `--root <REF>` | - | Start traversal from this ref; merges into existing refmap with scoped invalidation |
-| `--snapshot <snapshot_id>` | latest | Snapshot ID to use when resolving `--root` |
 | `--surface <TYPE>` | window | `window`, `focused`, `menu`, `menubar`, `sheet`, `popover`, `alert`; Windows also serves the shell kinds `taskbar`, `system-tray`, `system-tray-overflow`, `start-menu`, `action-center` |
 
 ## JSON Output
@@ -492,7 +497,7 @@ See the [versioned JSON envelope, error-code, and exit-code contract](docs/json-
 
 ## Ref System
 
-`snapshot` assigns local positions in depth-first order and emits qualified refs such as `@s8f3k2p9:e1`, `@s8f3k2p9:e2`, and `@s8f3k2p9:e3`. A qualified ref embeds the exact snapshot ID and needs no separate `--snapshot`. Legacy bare refs such as `@e3` remain accepted only with an explicit `--snapshot s8f3k2p9`. Snapshot lookup stays inside the selected session namespace.
+`snapshot` assigns local positions in depth-first order and emits qualified refs such as `@s8f3k2p9:e1`, `@s8f3k2p9:e2`, and `@s8f3k2p9:e3`. A qualified ref embeds the exact snapshot ID. Bare refs such as `@e3` are rejected with `INVALID_ARGS`. Snapshot lookup stays inside the selected session namespace.
 
 Interactive roles that receive refs: `button`, `textfield`, `checkbox`, `link`, `menuitem`, `tab`, `slider`, `combobox`, `treeitem`, `cell`, `radiobutton`, `incrementor`, `menubutton`, `switch`, `colorwell`, `dockitem`.
 
@@ -534,12 +539,18 @@ snapshot → act → STALE_REF or AMBIGUOUS_TARGET? → wait/snapshot again → 
 
 ## Development
 
+Every platform adapter compiles on its own OS only, so unscoped workspace commands fail on every host. Scope cargo to the host package set (this is the macOS set):
+
 ```bash
-cargo build                               # debug build
-cargo build --release                     # optimized (<15MB)
-cargo test --lib --workspace              # run tests
-cargo clippy --all-targets -- -D warnings # lint (must pass with zero warnings)
+HOST_PKGS="-p agent-desktop-core -p agent-desktop-macos -p agent-desktop-linux -p agent-desktop -p agent-desktop-ffi"
+
+cargo build $HOST_PKGS                          # debug build
+cargo build --release -p agent-desktop          # optimized (<15MB)
+cargo test $HOST_PKGS --lib                     # library tests
+cargo clippy $HOST_PKGS --all-targets -- -D warnings  # lint (must pass with zero warnings)
 ```
+
+On Windows the set is `-p agent-desktop-core -p agent-desktop-windows -p agent-desktop -p agent-desktop-ffi`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full gates.
 
 ## FAQ
 

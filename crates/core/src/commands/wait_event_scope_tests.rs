@@ -48,6 +48,7 @@ fn app_terminated_wait_reports_termination_when_the_target_is_unresolvable() {
     let result = wait_for_event(input("app-terminated", Some("TextEdit")), &adapter, None).unwrap();
 
     assert_eq!(result["found"], true);
+    assert_eq!(result["target_unresolved"], true);
     assert_eq!(result["event"]["kind"], "app_terminated");
     assert_eq!(result["event"]["app"], "TextEdit");
     assert_eq!(

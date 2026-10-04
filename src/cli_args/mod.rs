@@ -201,12 +201,6 @@ pub(crate) struct FindArgs {
     pub root: Option<String>,
     #[arg(
         long,
-        value_name = "SNAPSHOT_ID",
-        help = "Snapshot ID to use when resolving --root"
-    )]
-    pub snapshot: Option<String>,
-    #[arg(
-        long,
         value_enum,
         default_value_t = Surface::Window,
         help = "Surface to search (menubar, menu, sheet ...) instead of the window"
@@ -252,15 +246,9 @@ pub(crate) struct ScreenshotArgs {
 pub(crate) struct GetArgs {
     #[arg(
         value_name = "REF",
-        help = "Qualified ref from snapshot (@<snapshot_id>:eN), or legacy @eN with --snapshot"
+        help = "Qualified ref from snapshot (@<snapshot_id>:eN)"
     )]
     pub ref_id: String,
-    #[arg(
-        long,
-        value_name = "SNAPSHOT_ID",
-        help = "Snapshot ID required for a legacy bare @eN ref; omit for a qualified ref"
-    )]
-    pub snapshot: Option<String>,
     #[arg(
         long,
         default_value = "text",
@@ -275,15 +263,9 @@ pub(crate) struct GetArgs {
 pub(crate) struct IsArgs {
     #[arg(
         value_name = "REF",
-        help = "Qualified ref from snapshot (@<snapshot_id>:eN), or legacy @eN with --snapshot"
+        help = "Qualified ref from snapshot (@<snapshot_id>:eN)"
     )]
     pub ref_id: String,
-    #[arg(
-        long,
-        value_name = "SNAPSHOT_ID",
-        help = "Snapshot ID required for a legacy bare @eN ref; omit for a qualified ref"
-    )]
-    pub snapshot: Option<String>,
     #[arg(
         long,
         default_value = "visible",
@@ -298,16 +280,9 @@ pub(crate) struct IsArgs {
 pub(crate) struct RefArgs {
     #[arg(
         value_name = "REF",
-        help = "Qualified ref from snapshot (@<snapshot_id>:eN), or legacy @eN with --snapshot"
+        help = "Qualified ref from snapshot (@<snapshot_id>:eN)"
     )]
     pub ref_id: String,
-    #[arg(
-        long = "snapshot",
-        value_name = "SNAPSHOT_ID",
-        help = "Snapshot ID required for a legacy bare @eN ref; omit for a qualified ref"
-    )]
-    #[serde(rename = "snapshot", alias = "snapshot_id")]
-    pub snapshot_id: Option<String>,
     #[arg(
         long = "timeout-ms",
         default_value_t = 5000,

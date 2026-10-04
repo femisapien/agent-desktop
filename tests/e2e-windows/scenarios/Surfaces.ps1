@@ -109,7 +109,7 @@ function Invoke-Ae6Legs {
             }
             $openSheet = Require-Target -Target (Find-Target -WindowId $mainWindowId -NativeId 'open-sheet' -TimeoutSeconds 10) -Description 'open-sheet'
             $entries = @(
-                @{ Command = 'click'; Args = @{ ref_id = $openSheet.RefId; snapshot = $openSheet.SnapshotId } }
+                @{ Command = 'click'; Args = @{ ref_id = $openSheet.RefId } }
                 @{ Command = 'wait'; Args = @{ event = 'surface-appeared'; app = $App; timeout = 5000 } }
             )
             $results = Invoke-AgentDesktopBatch -Entries $entries -TimeoutSeconds 20
@@ -137,7 +137,7 @@ function Invoke-Ae6Legs {
                which narrows the scan population without selecting the
                window by identity. #>
             $entries = @(
-                @{ Command = 'click'; Args = @{ ref_id = $openSheet.RefId; snapshot = $openSheet.SnapshotId } }
+                @{ Command = 'click'; Args = @{ ref_id = $openSheet.RefId } }
                 @{ Command = 'wait'; Args = @{ event = 'window-opened'; app = $App; timeout = 5000 } }
             )
             $results = Invoke-AgentDesktopBatch -Entries $entries -TimeoutSeconds 20

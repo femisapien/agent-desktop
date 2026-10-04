@@ -130,7 +130,7 @@ function Get-Target {
     <# -Raw skips the string cast for a non-scalar property (bounds' own
        x/y/width/height object) - still plain data, never the envelope. #>
     param([Parameter(Mandatory = $true)]$Target, [Parameter(Mandatory = $true)][string]$Property, [switch]$Raw)
-    $envelope = Invoke-AgentDesktop -Arguments @('get', $Target.RefId, '--snapshot', $Target.SnapshotId, '--property', $Property)
+    $envelope = Invoke-AgentDesktop -Arguments @('get', $Target.RefId, '--property', $Property)
     if ($envelope['ok'] -ne $true) {
         throw "Get-Target: 'get --property $Property' on $($Target.RefId) failed: $($envelope['error']['code'])"
     }
@@ -140,7 +140,7 @@ function Get-Target {
 
 function Test-Target {
     param([Parameter(Mandatory = $true)]$Target, [Parameter(Mandatory = $true)][string]$Property)
-    $envelope = Invoke-AgentDesktop -Arguments @('is', $Target.RefId, '--snapshot', $Target.SnapshotId, '--property', $Property)
+    $envelope = Invoke-AgentDesktop -Arguments @('is', $Target.RefId, '--property', $Property)
     if ($envelope['ok'] -ne $true) {
         throw "Test-Target: 'is --property $Property' on $($Target.RefId) failed: $($envelope['error']['code'])"
     }
@@ -152,7 +152,7 @@ function Wait-Target {
         [Parameter(Mandatory = $true)]$Target, [Parameter(Mandatory = $true)][string]$Predicate,
         [string]$Value, [string]$WaitAction, [int]$TimeoutMs = 5000
     )
-    $waitArgs = @('wait', '--element', $Target.RefId, '--snapshot', $Target.SnapshotId, '--predicate', $Predicate, '--timeout', [string]$TimeoutMs)
+    $waitArgs = @('wait', '--element', $Target.RefId, '--predicate', $Predicate, '--timeout', [string]$TimeoutMs)
     if ($Value) { $waitArgs += @('--value', $Value) }
     if ($WaitAction) { $waitArgs += @('--action', $WaitAction) }
     $seconds = [int][Math]::Ceiling($TimeoutMs / 1000) + 10
@@ -170,7 +170,7 @@ function Invoke-Target {
     )
     $callArgs = @()
     if ($Headed) { $callArgs += '--headed' }
-    $callArgs += @($Action, $Target.RefId, '--snapshot', $Target.SnapshotId)
+    $callArgs += @($Action, $Target.RefId)
     $callArgs += $ActionArgs
     $envelope = Invoke-AgentDesktop -Arguments $callArgs -TimeoutSeconds $TimeoutSeconds
     if ($RequireOk -and $envelope['ok'] -ne $true) {
@@ -186,7 +186,7 @@ function Invoke-Snapshot {
        banned envelope touch. #>
     [CmdletBinding()]
     param(
-        [string]$App, [string]$WindowId, [switch]$Skeleton, [string]$Root, [string]$Snapshot,
+        [string]$App, [string]$WindowId, [switch]$Skeleton, [string]$Root,
         [switch]$IncludeBounds, [int]$TimeoutSeconds = 20, [int]$MaxDepth, [int]$SnapshotTimeoutMs
     )
     $snapArgs = @('snapshot')
@@ -194,7 +194,6 @@ function Invoke-Snapshot {
     if ($WindowId) { $snapArgs += @('--window-id', $WindowId) }
     if ($Skeleton) { $snapArgs += '--skeleton' }
     if ($Root) { $snapArgs += @('--root', $Root) }
-    if ($Snapshot) { $snapArgs += @('--snapshot', $Snapshot) }
     if ($IncludeBounds) { $snapArgs += '--include-bounds' }
     if ($MaxDepth) { $snapArgs += @('--max-depth', [string]$MaxDepth) }; if ($SnapshotTimeoutMs) { $snapArgs += @('--timeout-ms', [string]$SnapshotTimeoutMs) }
     $envelope = Invoke-AgentDesktop -Arguments $snapArgs -TimeoutSeconds $TimeoutSeconds

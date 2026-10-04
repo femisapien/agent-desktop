@@ -80,14 +80,7 @@ fn stale_ref_returns_ok_false_error_envelope() {
         let action = default_action();
         let mut out: *mut std::os::raw::c_char = std::ptr::null_mut();
 
-        let rc = ad_execute_by_ref(
-            adapter,
-            ref_id.as_ptr(),
-            std::ptr::null(),
-            &action,
-            0,
-            &mut out,
-        );
+        let rc = ad_execute_by_ref(adapter, ref_id.as_ptr(), &action, 0, &mut out);
 
         let rc_i32 = rc as i32;
         assert!(
@@ -184,14 +177,7 @@ fn snapshot_execute_by_ref_live_roundtrip() {
         let action = default_action();
         let mut exec_out: *mut std::os::raw::c_char = std::ptr::null_mut();
 
-        let exec_rc = ad_execute_by_ref(
-            adapter,
-            ref_cstr.as_ptr(),
-            std::ptr::null(),
-            &action,
-            0,
-            &mut exec_out,
-        );
+        let exec_rc = ad_execute_by_ref(adapter, ref_cstr.as_ptr(), &action, 0, &mut exec_out);
 
         assert!(
             !exec_out.is_null(),

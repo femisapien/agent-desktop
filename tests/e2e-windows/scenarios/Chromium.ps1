@@ -179,7 +179,7 @@ function Invoke-ChromiumRateLeg {
     $okCount = 0; $staleCount = 0; $otherCount = 0
     for ($i = 0; $i -lt $script:ChromiumRateSampleCount; $i++) {
         $ref = $allRefs[$i % $allRefs.Count]
-        $envelope = Invoke-AgentDesktop -Arguments @('is', $ref, '--snapshot', $Snapshot.SnapshotId, '--property', 'checked')
+        $envelope = Invoke-AgentDesktop -Arguments @('is', $ref, '--property', 'checked')
         try {
             Assert-Envelope -Envelope $envelope -Ok
             $okCount++

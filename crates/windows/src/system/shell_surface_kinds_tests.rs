@@ -124,3 +124,13 @@ fn the_overflow_dismisses_by_raising_before_the_escape() {
         "a bare Escape is delivered to the foreground, not to the overflow"
     );
 }
+
+#[test]
+fn a_shell_host_image_matches_by_stem_and_an_application_does_not() {
+    use crate::system::shell_surface_immersive::is_host_image;
+
+    assert!(is_host_image("SearchHost.exe", START_HOSTS));
+    assert!(is_host_image("StartMenuExperienceHost.exe", START_HOSTS));
+    assert!(!is_host_image("notepad.exe", START_HOSTS));
+    assert!(!is_host_image("searchhostx.exe", START_HOSTS));
+}

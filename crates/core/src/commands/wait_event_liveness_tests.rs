@@ -83,6 +83,7 @@ fn close_to_tray_is_suppressed_but_a_genuine_exit_still_fires() {
     )
     .unwrap();
     assert_eq!(result["found"], true);
+    assert!(result.get("target_unresolved").is_none());
     assert_eq!(result["event"]["kind"], "app_terminated");
     assert_eq!(
         exited_adapter.process_state_calls.lock().unwrap()[0].instance,

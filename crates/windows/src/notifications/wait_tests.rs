@@ -57,7 +57,6 @@ fn notification_wait_args(timeout_ms: u64) -> wait::WaitArgs {
             ..Default::default()
         },
         predicate: wait::WaitPredicateArgs {
-            snapshot_id: None,
             predicate: None,
             value: None,
             action: None,

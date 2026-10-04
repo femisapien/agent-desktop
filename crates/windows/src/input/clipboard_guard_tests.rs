@@ -1,4 +1,4 @@
-use super::MoveableMemory;
+use super::{MoveableMemory, frees_on_this_thread};
 use agent_desktop_core::{DeliveryDisposition, ErrorCode};
 use windows_sys::Win32::Foundation::GlobalFree;
 use windows_sys::Win32::System::Memory::{GlobalLock, GlobalSize, GlobalUnlock};
@@ -9,11 +9,11 @@ use crate::input::clipboard_formats::CF_UNICODETEXT;
 fn failed_transfer_path_still_owns_handle_for_drop_free() {
     let guard = MoveableMemory::from_bytes(b"payload").expect("alloc");
     assert!(!guard.was_transferred());
-    let handle = guard.handle_for_test();
+    let before = frees_on_this_thread();
     drop(guard);
-    let size = unsafe { GlobalSize(handle) };
     assert_eq!(
-        size, 0,
+        frees_on_this_thread(),
+        before + 1,
         "Drop must GlobalFree a handle that never transferred"
     );
 }
@@ -22,7 +22,9 @@ fn failed_transfer_path_still_owns_handle_for_drop_free() {
 fn successful_transfer_path_releases_without_freeing() {
     let guard = MoveableMemory::from_bytes(b"keep-me").expect("alloc");
     let handle = guard.handle_for_test();
+    let before = frees_on_this_thread();
     guard.release_without_free_for_test();
+    assert_eq!(frees_on_this_thread(), before);
     let size = unsafe { GlobalSize(handle) };
     assert_eq!(
         size, 7,
@@ -54,7 +56,7 @@ fn an_empty_payload_is_refused_before_any_allocation() {
 #[test]
 fn set_clipboard_data_without_an_open_clipboard_fails_and_drop_still_frees_the_handle() {
     let guard = MoveableMemory::from_bytes(b"unopened").expect("alloc");
-    let handle = guard.handle_for_test();
+    let before = frees_on_this_thread();
 
     let error = guard
         .set_clipboard_data(CF_UNICODETEXT)
@@ -74,9 +76,9 @@ fn set_clipboard_data_without_an_open_clipboard_fails_and_drop_still_frees_the_h
         error.platform_detail
     );
 
-    let size = unsafe { GlobalSize(handle) };
     assert_eq!(
-        size, 0,
+        frees_on_this_thread(),
+        before + 1,
         "a failed transfer must leave transferred=false so Drop frees the handle"
     );
 }

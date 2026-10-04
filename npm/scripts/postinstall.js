@@ -220,6 +220,7 @@ function fixGlobalInstallBin() {
 
 function promptSkillInstall() {
   const platformSkill = {
+    darwin: 'agent-desktop-macos',
     win32: 'agent-desktop-windows',
   }[platform()];
   const skills = ['agent-desktop', 'agent-desktop-ffi'];

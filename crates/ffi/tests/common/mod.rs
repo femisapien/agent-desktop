@@ -8,7 +8,7 @@ pub use agent_desktop_ffi::{
     AdExactWindowList, AdFindQuery, AdIdentifierKind, AdKeyCombo, AdNativeHandle,
     AdNotificationActionRequest, AdNotificationIdentity, AdOptionalU64, AdOptionalUsize, AdPoint,
     AdPolicyKind, AdRect, AdRefEntry, AdScrollParams, AdWaitArgs, AdWaitMode, AdWaitPredicate,
-    AdWaitScope, AdWaitSurfaceModes, AdWindowInfo, AdWindowList,
+    AdWaitScope, AdWaitSurfaceModes,
 };
 pub use std::ffi::CStr;
 pub use std::os::raw::c_char;
@@ -118,14 +118,6 @@ unsafe extern "C" {
     pub fn ad_set_clipboard(adapter: *const AdAdapter, text: *const c_char) -> AdResult;
     pub fn ad_clear_clipboard(adapter: *const AdAdapter) -> AdResult;
 
-    pub fn ad_list_windows(
-        adapter: *const AdAdapter,
-        app_filter: *const c_char,
-        focused_only: bool,
-        out: *mut *mut AdWindowList,
-    ) -> AdResult;
-    pub fn ad_window_list_count(list: *const AdWindowList) -> u32;
-    pub fn ad_window_list_free(list: *mut AdWindowList);
     pub fn ad_list_windows_exact(
         adapter: *const AdAdapter,
         app_filter: *const c_char,
@@ -150,11 +142,11 @@ unsafe extern "C" {
     ) -> *const AdExactSurfaceInfo;
     pub fn ad_exact_surface_list_free(list: *mut AdExactSurfaceList);
 
-    pub fn ad_launch_app(
+    pub fn ad_launch_app_exact(
         adapter: *const AdAdapter,
         id: *const c_char,
         timeout_ms: u64,
-        out: *mut AdWindowInfo,
+        out: *mut AdExactWindowInfo,
     ) -> AdResult;
 
     pub fn ad_execute_action(
@@ -170,29 +162,24 @@ unsafe extern "C" {
         policy: i32,
         out: *mut AdActionResult,
     ) -> AdResult;
-    pub fn ad_execute_ref_action_with_policy(
+    pub fn ad_execute_ref_action_exact_with_policy(
         adapter: *const AdAdapter,
-        entry: *const AdRefEntry,
+        entry: *const AdExactRefEntry,
         action: *const AdAction,
         policy: i32,
         out: *mut AdActionResult,
     ) -> AdResult;
     pub fn ad_free_action_result(result: *mut AdActionResult);
 
-    pub fn ad_find(
+    pub fn ad_find_exact(
         adapter: *const AdAdapter,
-        win: *const AdWindowInfo,
+        win: *const AdExactWindowInfo,
         query: *const AdFindQuery,
         out: *mut AdNativeHandle,
     ) -> AdResult;
 
     pub fn ad_free_handle(adapter: *const AdAdapter, handle: *mut AdNativeHandle) -> AdResult;
 
-    pub fn ad_resolve_element(
-        adapter: *const AdAdapter,
-        entry: *const AdRefEntry,
-        out: *mut AdNativeHandle,
-    ) -> AdResult;
     pub fn ad_resolve_element_exact(
         adapter: *const AdAdapter,
         entry: *const AdExactRefEntry,
@@ -213,7 +200,6 @@ unsafe extern "C" {
     pub fn ad_execute_by_ref(
         adapter: *const AdAdapter,
         ref_id: *const c_char,
-        snapshot_id: *const c_char,
         action: *const AdAction,
         policy: i32,
         out: *mut *mut c_char,
@@ -221,7 +207,6 @@ unsafe extern "C" {
     pub fn ad_execute_by_ref_timeout(
         adapter: *const AdAdapter,
         ref_id: *const c_char,
-        snapshot_id: *const c_char,
         action: *const AdAction,
         policy: i32,
         timeout_ms: i64,
@@ -243,10 +228,6 @@ pub fn with_adapter<F: FnOnce(*mut AdAdapter)>(body: F) {
 pub fn with_isolated_home<F: FnOnce()>(body: F) {
     let _home = IsolatedHome::enter();
     body();
-}
-
-pub fn default_ref_entry() -> AdRefEntry {
-    unsafe { std::mem::zeroed() }
 }
 
 pub fn default_exact_ref_entry() -> AdExactRefEntry {

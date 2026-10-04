@@ -160,6 +160,7 @@ fn a_toggleable_role_reports_completeness_only_when_toggle_state_was_read() {
     assert!(complete(
         "checkbox",
         vec![
+            absent(TreeProperty::ExpandCollapseAvailable),
             flag(TreeProperty::ToggleAvailable, true),
             number(TreeProperty::ToggleState, 1),
         ],
@@ -167,6 +168,7 @@ fn a_toggleable_role_reports_completeness_only_when_toggle_state_was_read() {
     assert!(!complete(
         "checkbox",
         vec![
+            absent(TreeProperty::ExpandCollapseAvailable),
             flag(TreeProperty::ToggleAvailable, true),
             unknown(TreeProperty::ToggleState),
         ],
@@ -178,7 +180,48 @@ fn a_role_that_is_neither_toggleable_nor_expandable_is_complete() {
     assert!(complete(
         "button",
         vec![
+            absent(TreeProperty::ExpandCollapseAvailable),
             absent(TreeProperty::ToggleState),
+            absent(TreeProperty::ExpandCollapseState),
+        ],
+    ));
+}
+
+/// A failed optional availability read must not hold an ordinary control at
+/// "never looked": the visibility gate would stay unknown and every action on
+/// it would time out.
+#[test]
+fn a_menuitem_whose_expand_availability_read_failed_is_still_complete() {
+    assert!(complete(
+        "menuitem",
+        vec![
+            unknown(TreeProperty::ExpandCollapseAvailable),
+            absent(TreeProperty::ExpandCollapseState),
+        ],
+    ));
+}
+
+#[test]
+fn a_menuitem_that_answers_no_expand_collapse_is_complete() {
+    assert!(complete(
+        "menuitem",
+        vec![
+            flag(TreeProperty::ExpandCollapseAvailable, false),
+            absent(TreeProperty::ExpandCollapseState),
+        ],
+    ));
+}
+
+/// A WinForms drop-down list on build 17763 is a `combobox` whose provider
+/// answers that it has no `ExpandCollapse` pattern. Demanding an expand state
+/// it can never report made every action on it time out at the visibility
+/// gate.
+#[test]
+fn an_expandable_role_whose_provider_answers_no_pattern_is_complete() {
+    assert!(complete(
+        "combobox",
+        vec![
+            flag(TreeProperty::ExpandCollapseAvailable, false),
             absent(TreeProperty::ExpandCollapseState),
         ],
     ));

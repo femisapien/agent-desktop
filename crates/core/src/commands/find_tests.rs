@@ -134,7 +134,6 @@ fn limit_conflicts_with_single_result_modes_for_batch_too() {
         app: None,
         window_id: None,
         root: None,
-        snapshot: None,
         surface: crate::SnapshotSurface::Window,
         filter: no_filter(),
         states: vec![],
@@ -184,7 +183,6 @@ fn role_alias_is_preserved_until_live_validation() {
         app: None,
         window_id: None,
         root: None,
-        snapshot: None,
         surface: crate::SnapshotSurface::Window,
         filter: FindFilterArgs {
             role: Some("textarea".into()),
@@ -209,7 +207,6 @@ fn unknown_role_is_preserved_until_validation() {
         app: None,
         window_id: None,
         root: None,
-        snapshot: None,
         surface: crate::SnapshotSurface::Window,
         filter: FindFilterArgs {
             role: Some("navbar".into()),
@@ -240,7 +237,6 @@ fn empty_role_filtered_result_reports_roles_present_from_tree() {
         app: None,
         window_id: None,
         root: None,
-        snapshot: None,
         surface: crate::SnapshotSurface::Window,
         filter: FindFilterArgs {
             role: Some("navbar".into()),
@@ -267,7 +263,6 @@ fn roles_present_hint_is_omitted_when_a_match_is_found() {
         app: None,
         window_id: None,
         root: None,
-        snapshot: None,
         surface: crate::SnapshotSurface::Window,
         filter: FindFilterArgs {
             role: Some("textfield".into()),
@@ -292,7 +287,6 @@ fn find_args_scoped_to_window(window_id: &str) -> FindArgs {
         app: None,
         window_id: Some(window_id.into()),
         root: None,
-        snapshot: None,
         surface: crate::SnapshotSurface::Window,
         filter: FindFilterArgs {
             name: Some("OnlyInWindowTwo".into()),

@@ -105,7 +105,6 @@ pub unsafe extern "C" fn ad_snapshot(
             surface: core_surface,
             skeleton: false,
             root_ref: None,
-            snapshot_id: None,
             timeout_ms: None,
             force_electron_a11y: false,
         };

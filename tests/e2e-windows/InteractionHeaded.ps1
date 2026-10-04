@@ -100,7 +100,7 @@ function Invoke-HeadedInteractionLegs {
                 $source = Require-Target -Target (Find-Target -App $App -NativeId 'scroll-area' -TimeoutSeconds 10) -Description 'scroll-area'
                 Invoke-Target -Target $source -Action 'scroll-to' -RequireOk -Description 'scroll-area (scroll into view)' | Out-Null
                 $dragDestination = @{ X = 5; Y = 5 }
-                $e = Invoke-AgentDesktop -Arguments @('--headed', 'drag', '--from', $source.RefId, '--snapshot', $source.SnapshotId, '--to-xy', "$($dragDestination.X),$($dragDestination.Y)")
+                $e = Invoke-AgentDesktop -Arguments @('--headed', 'drag', '--from', $source.RefId, '--to-xy', "$($dragDestination.X),$($dragDestination.Y)")
                 Assert-Envelope -Envelope $e -Ok
                 <# Assert-Envelope -Ok alone only proves the command claimed
                    success. drag.rs's own drag_sequence ends its physical

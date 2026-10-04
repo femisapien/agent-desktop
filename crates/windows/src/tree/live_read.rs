@@ -252,29 +252,29 @@ pub(crate) fn live_element(read: &LiveRead) -> Result<LiveElement, AdapterError>
 }
 
 /// Whether the control-state evidence the post-action verifier reads was
-/// actually observed.
-///
-/// A toggleable role needs a readable `ToggleState`; the expand half applies
-/// to an expandable role or to any element that advertises `ExpandCollapse`,
-/// matching `states.rs`'s token push, which emits `expanded` for any role.
-/// Every other role trivially satisfies both halves. `gated_number` is the
-/// accessor `states.rs` builds the state vector with, so it answers the
-/// question the verifier actually has: did a value reach the vector? A gate
-/// that never reported true - the `Absent` of a pattern the provider does not
-/// implement, the `Unknown` of a read that failed - yields no value, and a
-/// defaulted value must not be read as an observation. Reporting the state
-/// vector's source as observed when it never produced a token is exactly what
-/// lets core mistake "collapsed" for "never looked".
+/// actually observed: a toggleable role needs a readable `ToggleState`, and
+/// the expand half needs a readable `ExpandCollapseState` wherever it applies.
+/// It applies to any element that advertises the pattern, and to an
+/// expandable role unless the provider answered that it has no
+/// `ExpandCollapse` pattern (a WinForms drop-down list on build 17763 has
+/// none, and demanding its state refused every action on it). A failed
+/// availability read on a non-expandable role leaves the half unapplied:
+/// counting it as unobserved would hold the visibility gate at unknown for an
+/// ordinary button whenever one optional read fails. A gate that never opened
+/// yields no value, and a defaulted value is not an observation.
 fn states_are_complete(read: &LiveRead, role: &str) -> bool {
+    use super::property_outcome::PropertyOutcome;
     let toggle_observed = !roles::is_toggleable_role(role)
         || read
             .properties
             .gated_number(super::property_ids::TreeProperty::ToggleState)
             .is_some();
-    let expand_applies = roles::is_expandable_role(role)
-        || read
-            .properties
-            .is_true(super::property_ids::TreeProperty::ExpandCollapseAvailable);
+    let available = super::property_ids::TreeProperty::ExpandCollapseAvailable;
+    let advertised = read.properties.is_true(available);
+    let expand_applies = match read.properties.get(available) {
+        PropertyOutcome::Known(_) => advertised,
+        PropertyOutcome::Unknown | PropertyOutcome::Absent => roles::is_expandable_role(role),
+    };
     let expand_observed = !expand_applies
         || read
             .properties

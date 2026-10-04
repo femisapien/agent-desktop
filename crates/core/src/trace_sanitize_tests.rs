@@ -119,6 +119,15 @@ fn trace_redacts_notification_actions_as_a_whole_array_not_element_wise() {
 }
 
 #[test]
+fn trace_keeps_element_capabilities_that_only_share_the_actions_token() {
+    let value = sanitize_trace_value(json!({
+        "available_actions": ["Click", "SetFocus"]
+    }));
+
+    assert_eq!(value["available_actions"][0], "Click");
+}
+
+#[test]
 fn trace_redacts_notification_app_name_regression_pin() {
     let value = sanitize_trace_value(json!({
         "app_name": "Mail"

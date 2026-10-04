@@ -109,7 +109,7 @@ function Invoke-ObservationScenario {
         if (-not $scrollArea -or -not $scrollArea['ref_id']) {
             Add-Fail -Leg 'root-drilldown-scoped-refs' -Reason 'scroll-area did not resolve as a drill-down root'
         } else {
-            $drill = Invoke-Snapshot -App $App -Root $scrollArea['ref_id'] -Snapshot $snap.SnapshotId
+            $drill = Invoke-Snapshot -App $App -Root $scrollArea['ref_id']
             $drillHasRow = Find-TreeNodeById -Node $drill.Root -Id 'scroll-row-1'
             if ($drill.SnapshotId -eq $snap.SnapshotId -and $drillHasRow) {
                 Add-Pass -Leg 'root-drilldown-scoped-refs'

@@ -78,7 +78,7 @@ function Assert-RefusalLeg {
     param($Leg, [Parameter(Mandatory = $true)][string]$App)
     $target = Require-Target -Target (Find-Target -App $App -NativeId $Leg.TargetId -TimeoutSeconds 10) -Description $Leg.TargetId
     if ($Leg.Action -eq 'drag') {
-        $callArgs = @('drag', '--from', $target.RefId, '--snapshot', $target.SnapshotId) + $Leg.ActionArgs
+        $callArgs = @('drag', '--from', $target.RefId) + $Leg.ActionArgs
         $envelope = Invoke-AgentDesktop -Arguments $callArgs
         Assert-Envelope -Envelope $envelope -ErrorCode 'POLICY_DENIED' -Delivery 'not_delivered' -Retry 'safe'
         return

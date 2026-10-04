@@ -36,7 +36,7 @@ The E2E harness drives the release binary against a real SwiftUI/AppKit fixture 
 
 ## Pre-commit Hook
 
-The repo ships a pre-commit hook at `.githooks/pre-commit` that runs `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, and `cargo test --lib --workspace` against staged Rust changes. Wire it up once after cloning:
+The repo ships a pre-commit hook at `.githooks/pre-commit`. For staged Rust changes it runs the source rules (`scripts/check-rust-file-size.sh`, `scripts/check-no-phase-references.sh`, `scripts/check-stale-ref-constructor-misuse.sh`), `cargo fmt --all -- --check`, and clippy and `cargo test --lib` over the host's package set; with FFI changes staged it also runs the FFI passthrough test and the cbindgen header check. Wire it up once after cloning:
 
 ```bash
 git config core.hooksPath .githooks
@@ -137,8 +137,8 @@ agent-desktop/
 │   │       ├── snapshot_ref.rs   # Ref-rooted drill-down (run_from_ref)
 │   │       └── commands/         # one file per command
 │   ├── macos/              # agent-desktop-macos (Phase 1)
-│   ├── windows/            # agent-desktop-windows (stub → Phase 2)
-│   ├── linux/              # agent-desktop-linux (stub → Phase 2)
+│   ├── windows/            # agent-desktop-windows (Phase 2)
+│   ├── linux/              # agent-desktop-linux (stub → Phase 3)
 │   └── ffi/                # agent-desktop-ffi (cdylib + committed C ABI header)
 ├── src/                    # agent-desktop binary (entry point)
 │   ├── main.rs             # entry point, permission check, JSON envelope
@@ -222,7 +222,7 @@ Batch is not a second dispatcher. `src/batch/mod.rs` deserializes JSON entries i
 Numbering follows `docs/phases.md` (the source of truth for phase scope):
 
 - **Phase 1 / 1.5 / 1.6 (completed):** Foundation + macOS MVP, FFI cdylib distribution, and the Playwright-grade foundation contract (capability supertraits, auto-wait, occlusion gate, live locator, ProcessState, envelope 2.1)
-- **Phase 2:** Windows adapter — delivered as sub-phases 2.0–2.15, beginning with a raw-script platform exploration phase, each a <=2,000-LOC PR into the `feat/windows-adapter` integration branch
+- **Phase 2:** Windows adapter — delivered as sub-phases 2.0–2.17, beginning with a raw-script platform exploration phase, each a <=2,000-LOC PR into the `feat/windows-adapter` integration branch
 - **Phase 3:** Linux adapter — same sub-phase template onto `feat/linux-adapter`
 - **Phase 4:** MCP server mode via `--mcp` flag — wraps existing commands
 - **Phase 5:** Daemon, sessions, enterprise quality gates
@@ -408,13 +408,13 @@ The `error` object may also carry optional `details` and `recovery` objects. Ver
 
 ## Ref System
 
-- Refs are allocated in depth-first document order and emitted as snapshot-qualified IDs such as `@s8f3k2p9:e1`. Legacy bare IDs such as `@e1` remain valid input only with an explicit `--snapshot s8f3k2p9`.
+- Refs are allocated in depth-first document order and emitted as snapshot-qualified IDs such as `@s8f3k2p9:e1`. Only the qualified form is accepted as input: a bare `@e1` fails with `INVALID_ARGS` and a suggestion to use the qualified ref `snapshot` prints. RefMap keys stay `@eN` internally; that storage form is never user input.
 - An element receives a ref when it is **addressable for an action**: its role is interactive (`button`, `textfield`, `checkbox`, `link`, `menuitem`, `tab`, `slider`, `combobox`, `treeitem`, `cell`, `radiobutton`, `switch`, `colorwell`, `menubutton`, `incrementor`, `dockitem`), **or** it advertises a primary action regardless of role. Container roles such as `scrollarea` (Scroll) and `disclosure` (Expand/Collapse/Click) are not interactive by role but are genuinely actionable, so they are ref-able — `scroll` / `expand` / `collapse` need a ref to target them
 - Ubiquitous affordances do not qualify on their own: `SetFocus` (focusability is not a primary action), `RightClick`, and `ScrollTo` (web runtimes such as Chromium/Electron advertise context menu and scroll-into-view on nearly every node). Inert containers and text advertising only these stay ref-less; `find` applies the same rule and returns `bounds` instead of a ref for such matches
 - Static text and non-actionable groups/containers do NOT get refs (they remain in tree for context)
 - Refs are deterministic within a snapshot but NOT stable across snapshots if UI changed
 - All persisted state lives under one state root, default `~/.agent-desktop`. `AGENT_DESKTOP_HOME` relocates it (the env value is the root itself, no suffix appended); resolution lives in `crates/core/src/state_root.rs` with precedence test override > env > default, and `status` reports the resolved root as `state_root`
-- Snapshot refs are stored by snapshot ID under `<state root>/snapshots/{snapshot_id}/refmap.json`, with a `latest_snapshot_id` pointer for commands that omit `--snapshot`
+- Snapshot refs are stored by snapshot ID under `<state root>/snapshots/{snapshot_id}/refmap.json`, with a `latest_snapshot_id` pointer that `status` reports
 - Retention keeps the newest 128 snapshots per namespace and evicts down to 96, so the sort-and-stat pass is amortised instead of running on every save. Refs are invalidated by the next UI change, so retention only has to cover one interaction's drill-downs. Per R7/KTD5 of the session-first trace plan, a `snapshot_id` referenced by an *older* trace event may therefore no longer resolve to a full tree; `ArtifactsMode::Full` is the recorded mitigation because it copies each refmap into `<session>/trace/refmaps/`
 - `~/.agent-desktop/last_refmap.json` is written only as a latest-snapshot inspection artifact; command code must use `RefStore`
 - Action commands use strict re-identification from platform-neutral `RefEntry` evidence: pid, role, path/source surface, role-conditional stable text identity, and bounds hash. Mutable control values are volatile and must not be treated as stable text identity. Return `STALE_REF` on mismatch and `AMBIGUOUS_TARGET` when multiple plausible live candidates remain.
@@ -422,7 +422,7 @@ The `error` object may also carry optional `details` and `recovery` objects. Ver
 - Drill-down: `--root @ref` starts from a previously-discovered ref with scoped invalidation (only that ref's subtree refs are replaced on re-drill)
 - RefMap size check: write-side guard prevents >1MB refmap files
 - **Sessions:** `session start` creates and returns a manifest-gated session under `~/.agent-desktop/sessions/<id>/` and enables automatic trace segments by default. It does not activate that session for later processes. Pass the returned ID through `--session` or `AGENT_DESKTOP_SESSION`. Bare `--session <id>` without a manifest scopes only the snapshot namespace — no surprise trace files.
-- **Subagent cursors (macOS):** `session start --cursor --multi-agent` enables independent cursors keyed by session ID and global `--agent-id` (`AGENT_DESKTOP_AGENT_ID` fallback). The harness supplies a stable ID per subagent; desktop UI actions require it in this mode. Agents share session snapshots and use qualified refs. Optional named `cursor-overlay enable` profiles affect presentation only. Disable/end stops every cursor in the session.
+- **Subagent cursors (macOS and Windows):** `session start --cursor --multi-agent` enables independent cursors keyed by session ID and global `--agent-id` (`AGENT_DESKTOP_AGENT_ID` fallback). The harness supplies a stable ID per subagent; desktop UI actions require it in this mode. Agents share session snapshots and use qualified refs. Optional named `cursor-overlay enable` profiles affect presentation only. Disable/end stops every cursor in the session.
 - **Trace:** manifest `trace: on` writes per-process JSONL segments under `<session>/trace/<pid>-<procTs>.jsonl`; `--trace <path>` overrides to one file; activation resolves `--session` > `AGENT_DESKTOP_SESSION` > no session. Snapshot lookup is confined to that selected namespace and never searches other sessions.
 
 ## PlatformAdapter Trait
@@ -459,8 +459,8 @@ for the actionability preflight (`get_live_*`), and `is_protected_process`
 - GitHub Actions macOS runner executes full test suite on every PR
 - Windows and Linux runners execute the core unit tests plus their native platform crate on every PR
 - `cargo tree -p agent-desktop-core` must not contain platform crate names
-- `cargo clippy --all-targets -- -D warnings`
-- `cargo test --workspace`
+- `cargo clippy --all-targets -- -D warnings` over each host's package set
+- `cargo test` over each host's package set
 - Binary size check: fail if release binary exceeds 15MB
 
 ### Core platform-conditional code
@@ -476,13 +476,12 @@ contact with Windows and was deleted. See
 ## Commands
 
 60 commands spanning App/Window, Observation, Interaction, Scroll, Keyboard,
-Mouse, Notifications (macOS), Clipboard, Wait, System (including `session`), and
-Batch. The full surface and per-command reference live in `skills/agent-desktop/`.
-All 60 are implemented on macOS (Phase 1). Windows ships observation, semantic
-actions, input synthesis, process/window lifecycle (`launch`, `close-app`,
-window ops, `press --app`), screenshot, and typed clipboard against the same
-surface; wait-event and shell surfaces remain ahead. Linux (Phase 3) targets the
-same surface. Adding a command: see the Extensibility Pattern above.
+Mouse, Notifications, Clipboard, Wait, System (including `session`), and
+Batch. The core skill (`skills/agent-desktop/`) covers the loop on every OS; the platform skills (`skills/agent-desktop-macos/`, `skills/agent-desktop-windows/`) cover what differs. `agent-desktop skills get platform` serves the one for the running OS.
+All 60 are implemented on macOS (Phase 1). Windows ships the same surface,
+including event waits, shell surfaces and Action Center notifications, with the
+per-platform limits stated in `skills/agent-desktop-windows/`. Linux (Phase 3)
+targets the same surface. Adding a command: see the Extensibility Pattern above.
 
 ## Non-Goals
 
@@ -494,7 +493,6 @@ same surface. Adding a command: see the Extensibility Pattern above.
 
 ## Reference Documents
 
-- PRD v2.0: `docs/agent_desktop_prd_v2.pdf`
 - Architecture Brainstorm: `docs/brainstorms/2026-02-19-architecture-validation-brainstorm.md`
 - Phase 1 Plan: `docs/plans/2026-02-19-feat-agent-desktop-phase1-foundation-plan.md`
 

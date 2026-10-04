@@ -81,25 +81,11 @@ fn load_ref_uses_qualified_identity_and_never_crosses_sessions() {
     let store = RefStore::for_session(Some("debug-session")).unwrap();
     let snapshot = store.save_new_snapshot(&map_with("Target")).unwrap();
     let qualified = format!("@{snapshot}:e1");
-    assert_eq!(store.load_ref(&qualified, None).unwrap(), entry("Target"));
-    assert_eq!(
-        store.load_ref("@e1", Some(&snapshot)).unwrap(),
-        entry("Target")
-    );
-    assert_eq!(
-        store.load_ref("@e1", None).unwrap_err().code(),
-        "INVALID_ARGS"
-    );
+    assert_eq!(store.load_ref(&qualified).unwrap(), entry("Target"));
+    assert_eq!(store.load_ref("@e1").unwrap_err().code(), "INVALID_ARGS");
     assert_eq!(
         store
-            .load_ref(&qualified, Some("sother"))
-            .unwrap_err()
-            .code(),
-        "INVALID_ARGS"
-    );
-    assert_eq!(
-        store
-            .load_ref(&format!("@{snapshot}:e2"), None)
+            .load_ref(&format!("@{snapshot}:e2"))
             .unwrap_err()
             .code(),
         "STALE_REF"
@@ -107,7 +93,7 @@ fn load_ref_uses_qualified_identity_and_never_crosses_sessions() {
     assert_eq!(
         RefStore::new()
             .unwrap()
-            .load_ref(&qualified, None)
+            .load_ref(&qualified)
             .unwrap_err()
             .code(),
         "SNAPSHOT_NOT_FOUND"

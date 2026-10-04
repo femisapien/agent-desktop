@@ -32,7 +32,6 @@ fn event_args(event: &str, window_id: String, timeout_ms: u64) -> WaitArgs {
             ..WaitModeArgs::default()
         },
         predicate: WaitPredicateArgs {
-            snapshot_id: None,
             predicate: None,
             value: None,
             action: None,

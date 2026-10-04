@@ -9,6 +9,47 @@ fn list_returns_known_skills() {
     assert!(arr.iter().any(|s| s["name"] == "agent-desktop"));
     assert!(arr.iter().any(|s| s["name"] == "agent-desktop-ffi"));
     assert!(arr.iter().any(|s| s["name"] == "agent-desktop-windows"));
+    assert!(arr.iter().any(|s| s["name"] == "agent-desktop-macos"));
+}
+
+#[test]
+fn list_marks_platform_skills_and_the_one_for_this_build() {
+    let v = list().expect("list");
+    let arr = v["skills"].as_array().expect("array");
+    let entry = |name: &str| {
+        arr.iter()
+            .find(|s| s["name"] == name)
+            .expect("skill listed")
+            .clone()
+    };
+    assert_eq!(entry("agent-desktop-macos")["platform"], "macos");
+    assert_eq!(entry("agent-desktop-windows")["platform"], "windows");
+    assert!(entry("agent-desktop").get("platform").is_none());
+    assert_eq!(
+        entry("agent-desktop-macos")["current"],
+        cfg!(target_os = "macos")
+    );
+    assert_eq!(
+        entry("agent-desktop-windows")["current"],
+        cfg!(target_os = "windows")
+    );
+}
+
+#[test]
+fn the_platform_alias_serves_this_build_s_platform_skill() {
+    let result = get(GetArgs {
+        name: "platform".into(),
+        full: false,
+        reference: None,
+    });
+    if cfg!(target_os = "macos") {
+        assert_eq!(result.expect("macos")["skill"], "agent-desktop-macos");
+    } else if cfg!(target_os = "windows") {
+        assert_eq!(result.expect("windows")["skill"], "agent-desktop-windows");
+    } else {
+        let err = result.expect_err("no platform skill on this OS yet");
+        assert!(format!("{err}").contains("no platform skill"));
+    }
 }
 
 #[test]
@@ -69,9 +110,7 @@ fn get_full_inlines_references() {
     .expect("get full");
     let content = v["content"].as_str().expect("string");
     assert!(content.contains("--- references/workflows.md ---"));
-    if cfg!(target_os = "macos") {
-        assert!(content.contains("--- references/macos.md ---"));
-    }
+    assert!(!content.contains("--- references/macos.md ---"));
     assert!(content.contains("@s8f3k2p9:e1"));
     assert!(content.contains("session start` does not activate later processes"));
     assert!(content.contains("session-owned ref still requires the same `--session`"));
@@ -132,7 +171,7 @@ fn every_skill_markdown_on_disk_is_served_from_the_skills_table() {
 
     let unserved: Vec<&String> = found
         .iter()
-        .filter(|path| !served.contains(*path) && !allowed_unserved(path))
+        .filter(|path| !served.contains(*path))
         .collect();
     assert!(
         unserved.is_empty(),
@@ -150,10 +189,6 @@ fn served_skill_paths() -> BTreeSet<String> {
         }
     }
     served
-}
-
-fn allowed_unserved(rel_path: &str) -> bool {
-    rel_path == "agent-desktop/references/macos.md" && !cfg!(target_os = "macos")
 }
 
 fn walk_markdowns(root: &Path) -> Vec<String> {

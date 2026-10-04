@@ -32,12 +32,6 @@ pub(crate) struct DragCliArgs {
     #[command(flatten)]
     #[serde(flatten)]
     pub target: DragTargetArgs,
-    #[arg(
-        long,
-        value_name = "SNAPSHOT_ID",
-        help = "Snapshot ID required for legacy bare @eN endpoints; omit for qualified refs"
-    )]
-    pub snapshot: Option<String>,
     #[arg(long, help = "Drag duration in milliseconds")]
     pub duration: Option<u64>,
     #[arg(

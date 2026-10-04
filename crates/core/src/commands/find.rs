@@ -40,7 +40,6 @@ pub struct FindArgs {
     pub app: Option<String>,
     pub window_id: Option<String>,
     pub root: Option<String>,
-    pub snapshot: Option<String>,
     pub surface: crate::SnapshotSurface,
     pub filter: FindFilterArgs,
     pub states: Vec<StatePredicate>,

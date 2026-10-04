@@ -2,6 +2,16 @@ use super::*;
 
 const WINDOWS_SKILL_DOC: &str = include_str!("../../skills/agent-desktop-windows/SKILL.md");
 
+/// The whole Windows skill package. Behaviour notes may live in any of its
+/// references; only the capability table is required to stay in SKILL.md.
+const WINDOWS_SKILL_PACKAGE: &str = concat!(
+    include_str!("../../skills/agent-desktop-windows/SKILL.md"),
+    include_str!("../../skills/agent-desktop-windows/references/shell-and-overlay.md"),
+    include_str!("../../skills/agent-desktop-windows/references/permissions-and-elevation.md"),
+    include_str!("../../skills/agent-desktop-windows/references/chromium-and-electron.md"),
+    include_str!("../../skills/agent-desktop-windows/references/troubleshooting.md"),
+);
+
 /// Commands the Windows table documents as unavailable that a Windows
 /// adapter behaviour backs with a refusal, pinned so the row and the
 /// behaviour cannot drift apart.
@@ -146,13 +156,13 @@ const POLL_COST_ANCHOR: &str = "`wait --notification` opens and closes the cente
 /// a timeout against.
 #[test]
 fn the_wait_notification_bullet_carries_its_measured_per_poll_cost() {
-    let start = WINDOWS_SKILL_DOC.find(POLL_COST_ANCHOR).expect(
+    let start = WINDOWS_SKILL_PACKAGE.find(POLL_COST_ANCHOR).expect(
         "the Windows skill must document the per-poll session behaviour of wait --notification",
     );
-    let bullet_end = WINDOWS_SKILL_DOC[start..]
+    let bullet_end = WINDOWS_SKILL_PACKAGE[start..]
         .find("\n- ")
-        .map_or(WINDOWS_SKILL_DOC.len(), |offset| start + offset);
-    let bullet = &WINDOWS_SKILL_DOC[start..bullet_end];
+        .map_or(WINDOWS_SKILL_PACKAGE.len(), |offset| start + offset);
+    let bullet = &WINDOWS_SKILL_PACKAGE[start..bullet_end];
 
     let states_a_decimal = bullet.split_whitespace().any(|token| {
         token.split_once('.').is_some_and(|(whole, fraction)| {
@@ -184,10 +194,10 @@ fn the_wait_notification_bullet_carries_its_measured_per_poll_cost() {
 #[test]
 fn the_windows_skill_warns_that_powershell_eats_an_unquoted_ref() {
     assert!(
-        WINDOWS_SKILL_DOC.contains("splatting"),
+        WINDOWS_SKILL_PACKAGE.contains("splatting"),
         "the skill must name PowerShell's splatting operator as the reason a bare ref vanishes"
     );
-    let quoted_example = WINDOWS_SKILL_DOC.contains("'@s8f3k2p9:e1'");
+    let quoted_example = WINDOWS_SKILL_PACKAGE.contains("'@s8f3k2p9:e1'");
     assert!(
         quoted_example,
         "the warning must show the quoted form, not merely assert that quoting is needed"
@@ -208,7 +218,7 @@ fn the_windows_skill_teaches_the_verification_outcomes_an_agent_branches_on() {
         "delivered_verified",
     ] {
         assert!(
-            WINDOWS_SKILL_DOC.contains(token),
+            WINDOWS_SKILL_PACKAGE.contains(token),
             "the skill must name {token} so an agent can tell the outcomes apart"
         );
     }
@@ -221,7 +231,7 @@ fn the_windows_skill_teaches_the_verification_outcomes_an_agent_branches_on() {
 fn the_windows_skill_lists_the_roles_that_compare_numerically() {
     for role in ["slider", "incrementor", "scrollbar", "handle"] {
         assert!(
-            WINDOWS_SKILL_DOC.contains(role),
+            WINDOWS_SKILL_PACKAGE.contains(role),
             "the skill must name {role} as numerically compared"
         );
         assert!(

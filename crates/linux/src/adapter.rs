@@ -40,7 +40,6 @@ mod tests {
                 surface: SnapshotSurface::Window,
                 skeleton: false,
                 root_ref: None,
-                snapshot_id: None,
                 timeout_ms: None,
                 force_electron_a11y: false,
             },

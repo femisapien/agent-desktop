@@ -89,6 +89,7 @@ fn poll_until_observed(
     pre_raise_children: &[isize],
 ) -> Result<WindowInfo, AdapterError> {
     let mut interval = std::time::Duration::from_millis(50);
+    let mut foreign_since: Option<std::time::Instant> = None;
     loop {
         if deadline.remaining().is_zero() {
             return Err(timeout_error(
@@ -105,11 +106,12 @@ fn poll_until_observed(
         }
         if let SurfaceFamily::Immersive { landmarks, .. } = &row.family {
             let client = crate::tree::automation::automation_client()?;
-            if super::shell_surface_immersive::raise_presented_foreign_shape(
+            let foreign = super::shell_surface_immersive::raise_presented_foreign_shape(
                 &client,
                 pre_raise_children,
                 landmarks,
-            )? {
+            )?;
+            if foreign_shape_settled(&mut foreign_since, foreign, std::time::Instant::now()) {
                 return Err(super::shell_surface_immersive::foreign_shape_error(
                     landmarks,
                 ));
@@ -119,6 +121,26 @@ fn poll_until_observed(
         std::thread::sleep(interval.min(remaining));
         interval = (interval * 3 / 2).min(std::time::Duration::from_millis(250));
     }
+}
+
+/// How long a raise-presented window must stay landmark-free before it is
+/// called a foreign shape. A surface that is still loading uncloaks before
+/// its tree carries a landmark, and a toast arriving during the raise is a
+/// landmark-free window that is not the surface, so a single poll's answer
+/// would refuse an open that one more poll resolves.
+const FOREIGN_SHAPE_SETTLE: std::time::Duration = std::time::Duration::from_millis(500);
+
+fn foreign_shape_settled(
+    since: &mut Option<std::time::Instant>,
+    foreign_now: bool,
+    now: std::time::Instant,
+) -> bool {
+    if !foreign_now {
+        *since = None;
+        return false;
+    }
+    let first = *since.get_or_insert(now);
+    now.duration_since(first) >= FOREIGN_SHAPE_SETTLE
 }
 
 /// Dismisses a shell surface and returns once it is observed no longer
@@ -142,6 +164,7 @@ pub(super) fn close_row(row: &SurfaceKindRow, deadline: Deadline) -> Result<(), 
     match row.dismiss {
         SurfaceDismiss::None => Ok(()),
         SurfaceDismiss::Escape => {
+            await_foreground(row, deadline)?;
             super::shell_surface_raise::send_chord(
                 &[],
                 super::shell_surface_kinds::VK_ESCAPE,
@@ -238,19 +261,28 @@ fn poll_with_cap(
 /// foreground window can be a descendant of the surface rather than the
 /// surface itself - the Start overlay's foreground is the search input's own
 /// window inside it (A26-9) - so ownership is read at the foreground window's
-/// root rather than by equality with it.
+/// root. On builds where Start's search window is its own top-level window,
+/// that window counts when it is the surface by host and landmark.
 #[cfg(target_os = "windows")]
 fn surface_owns_foreground(row: &SurfaceKindRow, deadline: Deadline) -> Result<bool, AdapterError> {
     use windows_sys::Win32::UI::WindowsAndMessaging::{GA_ROOT, GetAncestor, GetForegroundWindow};
 
-    let Some(top) = surface_top_handle(row, deadline)? else {
-        return Ok(false);
-    };
     let foreground = unsafe { GetForegroundWindow() };
     if foreground.is_null() {
         return Ok(false);
     }
-    Ok(unsafe { GetAncestor(foreground, GA_ROOT) } == top)
+    let root = unsafe { GetAncestor(foreground, GA_ROOT) };
+    if surface_top_handle(row, deadline)?.is_some_and(|top| top == root) {
+        return Ok(true);
+    }
+    match &row.family {
+        SurfaceFamily::Immersive {
+            host_images,
+            landmarks,
+            ..
+        } => super::shell_surface_immersive::window_is_surface(root, host_images, landmarks),
+        SurfaceFamily::Win32Class(_) => Ok(false),
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -356,3 +388,7 @@ mod command_live_tests;
 #[cfg(all(test, target_os = "windows"))]
 #[path = "shell_surface_close_tests.rs"]
 mod close_tests;
+
+#[cfg(test)]
+#[path = "shell_surface_settle_tests.rs"]
+mod settle_tests;

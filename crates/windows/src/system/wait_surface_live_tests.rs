@@ -99,7 +99,6 @@ fn event_wait(event: &str, app: String, seed: SignalBaseline) -> Result<Value, A
             ..WaitModeArgs::default()
         },
         predicate: WaitPredicateArgs {
-            snapshot_id: None,
             predicate: None,
             value: None,
             action: None,

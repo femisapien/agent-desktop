@@ -49,7 +49,7 @@ function Invoke-RemoveRowLegs {
             $preRemoval = Require-Target -Target (Find-Target -App $App -NativeId 'removable-row' -TimeoutSeconds 10) -Description 'removable-row (pre-removal ref)'
             $removeRow = Require-Target -Target (Find-Target -App $App -NativeId 'remove-row' -TimeoutSeconds 10) -Description 'remove-row'
 
-            $callArgs = @('click', $removeRow.RefId, '--snapshot', $removeRow.SnapshotId, '--wait-for-gone', 'button:Removable row')
+            $callArgs = @('click', $removeRow.RefId, '--wait-for-gone', 'button:Removable row')
             $envelope = Invoke-AgentDesktop -Arguments $callArgs -TimeoutSeconds 20
             Assert-Envelope -Envelope $envelope -Ok
             try {
@@ -59,7 +59,7 @@ function Invoke-RemoveRowLegs {
             } catch { Add-Fail -Leg 'reliability-wait-for-gone-observes-removal' -Reason $_.Exception.Message }
 
             try {
-                $staleEnvelope = Invoke-AgentDesktop -Arguments @('click', $preRemoval.RefId, '--snapshot', $preRemoval.SnapshotId, '--timeout-ms', '0')
+                $staleEnvelope = Invoke-AgentDesktop -Arguments @('click', $preRemoval.RefId, '--timeout-ms', '0')
                 Assert-Envelope -Envelope $staleEnvelope -ErrorCode 'STALE_REF'
                 Add-Pass -Leg 'reliability-stale-ref-after-removal'
             } catch { Add-Fail -Leg 'reliability-stale-ref-after-removal' -Reason $_.Exception.Message }

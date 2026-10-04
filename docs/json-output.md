@@ -20,7 +20,7 @@ Errors include machine-readable codes and recovery hints:
   "command": "click",
   "error": {
     "code": "STALE_REF",
-    "message": "Element at @e7 no longer matches the last snapshot",
+    "message": "Element at @s8f3k2p9:e7 no longer matches the last snapshot",
     "suggestion": "Run 'snapshot' to refresh refs, then retry",
     "recovery": {
       "strategy": "refresh_snapshot_then_retry_original",

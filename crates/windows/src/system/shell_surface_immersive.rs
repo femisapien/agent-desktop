@@ -1,4 +1,4 @@
-﻿//! The immersive family's resolver: the half of the shell-surface seam the
+//! The immersive family's resolver: the half of the shell-surface seam the
 //! Win32 top-level walk cannot reach (A26-1). The resolver walks the UIA
 //! root's children and matches the first child whose class, hosting shell
 //! process, landmark and cloak state name the kind's surface; the landmark
@@ -111,14 +111,44 @@ fn shell_host_child(
         Err(_) => return None,
     };
     let image = super::process_identity::process_image_name(pid)?;
-    let image_stem = image.strip_suffix(".exe").unwrap_or(&image);
-    if !host_images
-        .iter()
-        .any(|host| host.eq_ignore_ascii_case(image_stem))
-    {
+    if !is_host_image(&image, host_images) {
         return None;
     }
     Some((handle, pid, image))
+}
+
+/// Whether a process image is one of the shell hosts a surface row names.
+pub(super) fn is_host_image(image: &str, host_images: &[&str]) -> bool {
+    let stem = image.strip_suffix(".exe").unwrap_or(image);
+    host_images
+        .iter()
+        .any(|host| host.eq_ignore_ascii_case(stem))
+}
+
+/// Whether this top-level window is the row's own surface: one of its shell
+/// hosts owns it and its tree carries one of its landmarks. The host alone is
+/// not an identity - Start and the Action Center can share one - and Start can
+/// hand its foreground to a search window outside the overlay, so the overlay's
+/// handle alone is not one either.
+pub(super) fn window_is_surface(
+    handle: WindowHandle,
+    host_images: &[&str],
+    landmarks: &[&str],
+) -> Result<bool, AdapterError> {
+    let hosted = super::window_identity::live_window_owner(handle)
+        .and_then(super::process_identity::process_image_name)
+        .is_some_and(|image| is_host_image(&image, host_images));
+    if !hosted {
+        return Ok(false);
+    }
+    let narrow = super::listing_retry::narrow_to_permitted_codes;
+    let client = crate::tree::automation::automation_client().map_err(narrow)?;
+    let Ok(element) =
+        client.element_from_handle(uiautomation::types::Handle::from(handle as isize))
+    else {
+        return Ok(false);
+    };
+    carries_landmark(&client, &element, landmarks)
 }
 
 fn immersive_candidate(
@@ -228,7 +258,7 @@ pub(super) fn foreign_shape_error(landmarks: &[&str]) -> AdapterError {
         landmarks.join(", ")
     ))
     .with_details(serde_json::json!({ "kind": "shell_surface_foreign_shape" }))
-    .with_disposition(DeliverySemantics::not_delivered())
+    .with_disposition(DeliverySemantics::delivered_unverified())
 }
 
 /// Whether the candidate's subtree carries one of the kind's landmark

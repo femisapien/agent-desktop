@@ -8,7 +8,6 @@ use serde_json::{Value, json};
 
 pub struct GetArgs {
     pub ref_id: String,
-    pub snapshot_id: Option<String>,
     pub property: GetProperty,
 }
 
@@ -26,8 +25,7 @@ pub fn execute(
     adapter: &dyn PlatformAdapter,
     context: &CommandContext,
 ) -> Result<Value, AppError> {
-    let (entry, handle) =
-        resolve_ref_with_context(&args.ref_id, args.snapshot_id.as_deref(), adapter, context)?;
+    let (entry, handle) = resolve_ref_with_context(&args.ref_id, adapter, context)?;
     let deadline = crate::Deadline::standard()?;
 
     let (prop_name, value, bounds_live) = match args.property {

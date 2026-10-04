@@ -69,10 +69,59 @@ fn cursor_overlay_disable_is_a_dedicated_command() {
 
 #[test]
 fn action_commands_reject_the_removed_cursor_flag() {
-    let error = Cli::try_parse_from(["agent-desktop", "--agent-cursor", "on", "click", "@e1"])
-        .expect_err("cursor configuration is not an action flag");
+    let error = Cli::try_parse_from([
+        "agent-desktop",
+        "--agent-cursor",
+        "on",
+        "click",
+        "@s8f3k2p9:e1",
+    ])
+    .expect_err("cursor configuration is not an action flag");
 
     assert_eq!(error.kind(), ErrorKind::UnknownArgument);
+}
+
+#[test]
+fn ref_commands_reject_the_removed_snapshot_flag() {
+    for argv in [
+        vec!["click", "@s8f3k2p9:e1", "--snapshot", "s8f3k2p9"],
+        vec!["get", "@s8f3k2p9:e1", "--snapshot", "s8f3k2p9"],
+        vec!["is", "@s8f3k2p9:e1", "--snapshot", "s8f3k2p9"],
+        vec!["type", "@s8f3k2p9:e1", "--snapshot", "s8f3k2p9", "hi"],
+        vec!["set-value", "@s8f3k2p9:e1", "--snapshot", "s8f3k2p9", "v"],
+        vec!["select", "@s8f3k2p9:e1", "--snapshot", "s8f3k2p9", "v"],
+        vec!["scroll", "@s8f3k2p9:e1", "--snapshot", "s8f3k2p9"],
+        vec!["hover", "@s8f3k2p9:e1", "--snapshot", "s8f3k2p9"],
+        vec![
+            "drag",
+            "--from",
+            "@s8f3k2p9:e1",
+            "--to",
+            "@s8f3k2p9:e2",
+            "--snapshot",
+            "s8f3k2p9",
+        ],
+        vec![
+            "wait",
+            "--element",
+            "@s8f3k2p9:e1",
+            "--snapshot",
+            "s8f3k2p9",
+        ],
+        vec![
+            "snapshot",
+            "--root",
+            "@s8f3k2p9:e1",
+            "--snapshot",
+            "s8f3k2p9",
+        ],
+        vec!["find", "--root", "@s8f3k2p9:e1", "--snapshot", "s8f3k2p9"],
+    ] {
+        let mut full = vec!["agent-desktop"];
+        full.extend(argv.iter().copied());
+        let error = Cli::try_parse_from(full).expect_err(&format!("{argv:?} must not parse"));
+        assert_eq!(error.kind(), ErrorKind::UnknownArgument, "{argv:?}");
+    }
 }
 
 #[test]
@@ -137,11 +186,14 @@ fn curated_help_exposes_new_surfaces_and_current_ref_contract() {
     for expected in [
         "mouse-wheel",
         "list-displays",
-        "--file-url",
         "wait --event <kind>",
         "@s8f3k2p9:e1",
         "does not activate",
         "session-owned refs require the same scope",
+        "skills get desktop",
+        "skills get platform",
+        "disposition.retry",
+        "splatting",
     ] {
         assert!(
             help.contains(expected),
@@ -150,6 +202,12 @@ fn curated_help_exposes_new_surfaces_and_current_ref_contract() {
     }
     assert!(!help.contains("current-session pointer"));
     assert!(!help.contains("explicit --snapshot IDs do not require it"));
+    assert!(!help.contains("Legacy bare"));
+    assert!(!help.contains("--snapshot"));
+    assert!(
+        !help.contains("--full"),
+        "root help must not send every agent to load all references up front"
+    );
 }
 
 #[test]

@@ -95,7 +95,6 @@ fn c_abi_click_on_a_real_window_is_confirmed_by_the_window_itself() {
         let status = ad_execute_by_ref(
             adapter,
             ref_c.as_ptr(),
-            std::ptr::null(),
             &click_action(),
             POLICY_HEADLESS,
             &mut action_out,

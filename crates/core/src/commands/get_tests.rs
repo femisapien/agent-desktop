@@ -108,8 +108,7 @@ fn bounds_prefers_a_live_read_over_the_stale_snapshot_geometry() {
 
     let result = execute(
         GetArgs {
-            ref_id: "@e1".into(),
-            snapshot_id: Some(snapshot_id),
+            ref_id: format!("@{}:e1", snapshot_id),
             property: GetProperty::Bounds,
         },
         &adapter,
@@ -132,8 +131,7 @@ fn bounds_falls_back_to_snapshot_geometry_when_no_live_read_is_available() {
 
     let result = execute(
         GetArgs {
-            ref_id: "@e1".into(),
-            snapshot_id: Some(snapshot_id),
+            ref_id: format!("@{}:e1", snapshot_id),
             property: GetProperty::Bounds,
         },
         &adapter,
@@ -158,8 +156,7 @@ fn bounds_reports_null_not_the_snapshot_rect_when_a_live_read_finds_no_bounds() 
 
     let result = execute(
         GetArgs {
-            ref_id: "@e1".into(),
-            snapshot_id: Some(snapshot_id),
+            ref_id: format!("@{}:e1", snapshot_id),
             property: GetProperty::Bounds,
         },
         &adapter,
@@ -194,8 +191,7 @@ fn text_reads_the_name_on_a_labelled_button_and_the_value_on_a_textfield() {
     let read = |snapshot: &str, property| {
         execute(
             GetArgs {
-                ref_id: "@e1".into(),
-                snapshot_id: Some(snapshot.to_owned()),
+                ref_id: format!("@{}:e1", snapshot.to_owned()),
                 property,
             },
             &adapter,
@@ -244,8 +240,7 @@ fn each_preference_falls_back_across_when_its_own_half_is_empty() {
     let read = |snapshot: &str| {
         execute(
             GetArgs {
-                ref_id: "@e1".into(),
-                snapshot_id: Some(snapshot.to_owned()),
+                ref_id: format!("@{}:e1", snapshot.to_owned()),
                 property: GetProperty::Text,
             },
             &adapter,

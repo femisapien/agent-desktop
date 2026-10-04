@@ -116,7 +116,7 @@ function Invoke-AutoWaitPositiveLegs {
                 $delayedButton = Require-Target -Target (Find-Target -App $App -NativeId 'delayed-button' -TimeoutSeconds 10) -Description 'delayed-button'
                 $remainingMs = $script:DelayedEnableMs - $armedAt.Elapsed.TotalMilliseconds
                 $clickClock = [System.Diagnostics.Stopwatch]::StartNew()
-                $callArgs = @('click', $delayedButton.RefId, '--snapshot', $delayedButton.SnapshotId) + $leg.TimeoutArgs
+                $callArgs = @('click', $delayedButton.RefId) + $leg.TimeoutArgs
                 $envelope = Invoke-AgentDesktop -Arguments $callArgs -TimeoutSeconds 20
                 $clickClock.Stop()
                 Assert-Envelope -Envelope $envelope -Ok
@@ -139,7 +139,7 @@ function Invoke-AutoWaitZeroTimeoutLeg {
             $enableLater = Require-Target -Target (Find-Target -App $App -NativeId 'enable-later' -TimeoutSeconds 10) -Description 'enable-later'
             Invoke-Target -Target $enableLater -Action 'click' -RequireOk -Description 'enable-later' | Out-Null
             $delayedButton = Require-Target -Target (Find-Target -App $App -NativeId 'delayed-button' -TimeoutSeconds 10) -Description 'delayed-button'
-            $envelope = Invoke-AgentDesktop -Arguments @('click', $delayedButton.RefId, '--snapshot', $delayedButton.SnapshotId, '--timeout-ms', '0')
+            $envelope = Invoke-AgentDesktop -Arguments @('click', $delayedButton.RefId, '--timeout-ms', '0')
             Assert-Envelope -Envelope $envelope -ErrorCode 'ACTION_FAILED'
         }
         Add-Pass -Leg 'auto-wait-zero-timeout-fails-fast'
@@ -159,7 +159,7 @@ function Invoke-PermanentlyDisabledLegs {
 
         try {
             $clock = [System.Diagnostics.Stopwatch]::StartNew()
-            $envelope = Invoke-AgentDesktop -Arguments @('click', $target.RefId, '--snapshot', $target.SnapshotId) -TimeoutSeconds 20
+            $envelope = Invoke-AgentDesktop -Arguments @('click', $target.RefId) -TimeoutSeconds 20
             $clock.Stop()
             Assert-Envelope -Envelope $envelope -ErrorCode 'TIMEOUT'
             if ($clock.Elapsed.TotalMilliseconds -lt 3000) { throw "returned in $($clock.Elapsed.TotalMilliseconds)ms, too fast to have exhausted a multi-second default" }
@@ -168,7 +168,7 @@ function Invoke-PermanentlyDisabledLegs {
 
         try {
             $clock = [System.Diagnostics.Stopwatch]::StartNew()
-            $envelope = Invoke-AgentDesktop -Arguments @('click', $target.RefId, '--snapshot', $target.SnapshotId, '--timeout-ms', '2000') -TimeoutSeconds 20
+            $envelope = Invoke-AgentDesktop -Arguments @('click', $target.RefId, '--timeout-ms', '2000') -TimeoutSeconds 20
             $clock.Stop()
             Assert-Envelope -Envelope $envelope -ErrorCode 'TIMEOUT'
             if ($clock.Elapsed.TotalMilliseconds -lt 1700 -or $clock.Elapsed.TotalMilliseconds -gt 4000) { throw "returned in $($clock.Elapsed.TotalMilliseconds)ms, outside the expected range around an explicit 2000ms budget" }
@@ -177,7 +177,7 @@ function Invoke-PermanentlyDisabledLegs {
 
         try {
             $clock = [System.Diagnostics.Stopwatch]::StartNew()
-            $envelope = Invoke-AgentDesktop -Arguments @('click', $target.RefId, '--snapshot', $target.SnapshotId, '--timeout-ms', '0')
+            $envelope = Invoke-AgentDesktop -Arguments @('click', $target.RefId, '--timeout-ms', '0')
             $clock.Stop()
             Assert-Envelope -Envelope $envelope -ErrorCode 'ACTION_FAILED'
             if ($clock.Elapsed.TotalMilliseconds -gt 2000) { throw "returned in $($clock.Elapsed.TotalMilliseconds)ms, not immediate" }
@@ -278,7 +278,7 @@ function Invoke-OcclusionLegs {
             $preStatus = Get-Target -Target $status -Property 'value'
 
             try {
-                $envelope = Invoke-AgentDesktop -Arguments @('--headed', 'click', $occluded.RefId, '--snapshot', $occluded.SnapshotId, '--timeout-ms', '0')
+                $envelope = Invoke-AgentDesktop -Arguments @('--headed', 'click', $occluded.RefId, '--timeout-ms', '0')
                 Assert-EnvelopeCheckOccluder -Envelope $envelope -ErrorCode 'ACTION_FAILED' -ExpectedOccluderName 'fixture-overlay'
                 Add-Pass -Leg 'occlusion-blocks-headed-click'
             } catch { Add-Fail -Leg 'occlusion-blocks-headed-click' -Reason $_.Exception.Message }
