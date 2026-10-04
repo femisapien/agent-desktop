@@ -133,6 +133,9 @@ impl CheckTarget for LiveToggleTarget<'_> {
     }
 }
 
+#[path = "toggle_state_radio.rs"]
+mod radio;
+
 fn run_check(
     target: &mut impl CheckTarget,
     want_checked: bool,
@@ -157,12 +160,12 @@ fn run_check(
         match target.checked().map_err(after_delivery)? {
             Some(state) if state == want_checked => return Ok(vec![value_write_step()]),
             Some(_) if press_after_ignored_write => steps.push(ignored_write_step()),
-            Some(_) => return Err(after_delivery(radio_uncheck_unsupported())),
+            Some(_) => return Err(after_delivery(radio::uncheck_unsupported())),
             None => return Err(after_delivery(state_not_reached())),
         }
     }
     if !wrote && !press_after_ignored_write {
-        return Err(radio_uncheck_unsupported());
+        return radio::refuse_uncheck(target, want_checked, !steps.is_empty());
     }
     let clicked = target
         .click()
@@ -177,20 +180,6 @@ fn run_check(
 
 fn ignored_write_step() -> ActionStep {
     ActionStep::attempted("AXValue").with_mechanism(StepMechanism::SemanticApi)
-}
-
-fn radio_uncheck_unsupported() -> AdapterError {
-    AdapterError::new(
-        ErrorCode::ActionFailed,
-        "a radio button cannot be unchecked directly",
-    )
-    .with_details(serde_json::json!({
-        "verification": "requested_checked_state_not_observed"
-    }))
-    .with_suggestion(
-        "A radio button cannot be unchecked directly. Select a sibling radio button in the same group instead.",
-    )
-    .with_disposition(DeliverySemantics::not_delivered())
 }
 
 fn value_write_step() -> ActionStep {

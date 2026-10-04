@@ -182,7 +182,7 @@ fn unchecking_a_radio_whose_value_is_not_settable_sends_nothing() {
 
 #[test]
 fn unchecking_a_radio_that_refuses_the_write_does_not_press_it() {
-    let mut target = Scripted::new(&[Some(true)], &[], true);
+    let mut target = Scripted::new(&[Some(true), Some(true)], &[], true);
     target.write_accepted = false;
     let error = run_check(&mut target, false, false).unwrap_err();
     assert!(
@@ -193,4 +193,22 @@ fn unchecking_a_radio_that_refuses_the_write_does_not_press_it() {
     );
     assert_eq!(error.disposition, DeliverySemantics::not_delivered());
     assert_eq!((target.writes, target.clicks), (1, 0));
+}
+
+#[test]
+fn a_radio_that_refuses_the_write_but_changes_reports_the_change() {
+    let mut target = Scripted::new(&[Some(true), Some(false)], &[], true);
+    target.write_accepted = false;
+    let steps = run_check(&mut target, false, false).unwrap();
+    assert_eq!(labels(&steps), [("AXValue".into(), Some(true))]);
+    assert_eq!(target.clicks, 0);
+}
+
+#[test]
+fn a_radio_whose_state_is_unreadable_after_a_refused_write_is_not_called_undelivered() {
+    let mut target = Scripted::new(&[Some(true), None], &[], true);
+    target.write_accepted = false;
+    let error = run_check(&mut target, false, false).unwrap_err();
+    assert_eq!(error.disposition, DeliverySemantics::delivered_unverified());
+    assert_eq!(target.clicks, 0);
 }
