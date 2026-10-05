@@ -3,10 +3,14 @@ use serde_json::{Value, json};
 
 pub struct ListAppsArgs {
     pub app: Option<String>,
+    pub timeout_ms: Option<u64>,
 }
 
 pub fn execute(args: ListAppsArgs, adapter: &dyn PlatformAdapter) -> Result<Value, AppError> {
-    let mut apps = adapter.list_apps(crate::Deadline::standard()?)?;
+    let mut apps = adapter.list_apps(crate::Deadline::after(
+        args.timeout_ms
+            .unwrap_or(crate::DEFAULT_OPERATION_TIMEOUT_MS),
+    )?)?;
     if let Some(app) = args.app {
         let needle = search_text::normalize(&app);
         apps.retain(|candidate| search_text::contains(&candidate.name, &needle));

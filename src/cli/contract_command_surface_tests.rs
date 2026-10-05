@@ -230,3 +230,55 @@ mod windows_capability_claims;
 
 #[path = "install_doc_claims_tests.rs"]
 mod install_doc_claims;
+
+#[test]
+fn listing_timeout_is_accepted_in_cli_and_batch() {
+    use clap::Parser;
+    for command in ["list-apps", "list-windows"] {
+        let cli = crate::cli::Cli::try_parse_from(["agent-desktop", command, "--timeout-ms", "37"])
+            .unwrap();
+        let batch =
+            crate::batch::parse_command(agent_desktop_core::commands::batch::BatchCommand {
+                command: command.into(),
+                session: None,
+                args: serde_json::json!({"timeout_ms":37}),
+            });
+        for parsed in [cli.command.unwrap(), batch.unwrap()] {
+            match &parsed {
+                crate::cli::Commands::ListApps(args) => assert_eq!(args.timeout_ms, Some(37)),
+                crate::cli::Commands::ListWindows(args) => assert_eq!(args.timeout_ms, Some(37)),
+                _ => panic!("listing command"),
+            }
+            crate::dispatch::dispatch(
+                parsed,
+                &ListingDeadlineAdapter,
+                &agent_desktop_core::PermissionReport::default(),
+                &agent_desktop_core::context::CommandContext::default(),
+            )
+            .unwrap();
+        }
+    }
+}
+
+struct ListingDeadlineAdapter;
+
+impl agent_desktop_core::ObservationOps for ListingDeadlineAdapter {
+    fn list_apps(
+        &self,
+        deadline: agent_desktop_core::Deadline,
+    ) -> Result<Vec<agent_desktop_core::AppInfo>, agent_desktop_core::AdapterError> {
+        assert_eq!(deadline.timeout_ms(), 37);
+        Ok(Vec::new())
+    }
+    fn list_windows(
+        &self,
+        _: &agent_desktop_core::WindowFilter,
+        deadline: agent_desktop_core::Deadline,
+    ) -> Result<Vec<agent_desktop_core::WindowInfo>, agent_desktop_core::AdapterError> {
+        assert_eq!(deadline.timeout_ms(), 37);
+        Ok(Vec::new())
+    }
+}
+impl agent_desktop_core::ActionOps for ListingDeadlineAdapter {}
+impl agent_desktop_core::InputOps for ListingDeadlineAdapter {}
+impl agent_desktop_core::SystemOps for ListingDeadlineAdapter {}

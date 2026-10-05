@@ -81,6 +81,12 @@ pub(crate) struct CloseAppArgs {
 pub(crate) struct ListWindowsArgs {
     #[arg(long, help = "Filter to application by exact case-insensitive name")]
     pub app: Option<String>,
+    #[arg(
+        long,
+        value_name = "MS",
+        help = "Inventory deadline in milliseconds (default 5000)"
+    )]
+    pub timeout_ms: Option<u64>,
 }
 
 #[derive(Parser, Debug, Deserialize)]
@@ -88,6 +94,12 @@ pub(crate) struct ListWindowsArgs {
 pub(crate) struct ListAppsArgs {
     #[arg(long, help = "Filter to application by name")]
     pub app: Option<String>,
+    #[arg(
+        long,
+        value_name = "MS",
+        help = "Inventory deadline in milliseconds (default 5000)"
+    )]
+    pub timeout_ms: Option<u64>,
 }
 
 #[derive(Parser, Debug, Deserialize)]

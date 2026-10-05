@@ -74,7 +74,6 @@ fn stabilize_apps_until(
                 last_failure = None;
             }
             Err(error) if retryable_inventory_error(&error) => {
-                churn_events += 1;
                 previous = None;
                 last_failure = Some(error);
             }
@@ -112,15 +111,21 @@ fn unstable_apps_error(
     churn_events: u64,
     last_failure: Option<&AdapterError>,
 ) -> AdapterError {
+    let mut details = serde_json::json!({
+        "kind": "application_inventory_unstable",
+        "attempts": attempts,
+        "churn_events": churn_events,
+        "retryable": true,
+    });
+    if let Some(error) = last_failure {
+        details["last_failure"] = serde_json::json!(error.message);
+        if let Some(failure_details) = &error.details {
+            details["last_failure_details"] = failure_details.clone();
+        }
+    }
     AdapterError::timeout("macOS application inventory did not stabilize before the deadline")
         .with_suggestion("Retry after application launches and exits settle")
-        .with_details(serde_json::json!({
-            "kind": "application_inventory_unstable",
-            "attempts": attempts,
-            "churn_events": churn_events,
-            "last_failure": last_failure.map(|error| &error.message),
-            "retryable": true,
-        }))
+        .with_details(details)
 }
 
 pub(crate) fn list_windows_until(
@@ -171,11 +176,16 @@ fn required_sources_failed(
 
 fn source_failure(source: &str, result: &Result<Vec<AppInfo>, AdapterError>) -> serde_json::Value {
     let error = result.as_ref().err();
-    serde_json::json!({
-        "source": source,
-        "code": error.map(|error| error.code.as_str()),
-        "message": error.map(|error| error.message.as_str()),
-    })
+    let Some(error) = error else {
+        return serde_json::json!({});
+    };
+    let mut failure = serde_json::json!({
+        "source": source, "code": error.code.as_str(), "message": error.message,
+    });
+    if let Some(details) = &error.details {
+        failure["details"] = details.clone();
+    }
+    failure
 }
 
 fn ensure_before_deadline(deadline: Instant) -> Result<(), AdapterError> {

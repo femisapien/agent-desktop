@@ -48,7 +48,10 @@ pub(super) fn list_windows(
     adapter: &dyn PlatformAdapter,
 ) -> Result<Value, AppError> {
     list_windows_command::execute(
-        list_windows_command::ListWindowsArgs { app: args.app },
+        list_windows_command::ListWindowsArgs {
+            app: args.app,
+            timeout_ms: args.timeout_ms,
+        },
         adapter,
     )
 }
@@ -57,7 +60,13 @@ pub(super) fn list_apps(
     args: ListAppsArgs,
     adapter: &dyn PlatformAdapter,
 ) -> Result<Value, AppError> {
-    list_apps_command::execute(list_apps_command::ListAppsArgs { app: args.app }, adapter)
+    list_apps_command::execute(
+        list_apps_command::ListAppsArgs {
+            app: args.app,
+            timeout_ms: args.timeout_ms,
+        },
+        adapter,
+    )
 }
 
 pub(super) fn list_surfaces(
