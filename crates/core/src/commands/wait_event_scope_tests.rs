@@ -69,6 +69,40 @@ fn window_closed_wait_reports_closure_when_the_target_is_unresolvable() {
 }
 
 #[test]
+fn a_same_identifier_sibling_appearing_mid_wait_neither_aborts_nor_supplies_the_event() {
+    let target = app("TextEdit", "test-instance");
+    let sibling = AppInfo {
+        pid: crate::ProcessId::new(99),
+        ..app("TextEdit", "sibling-instance")
+    };
+    let sibling_window = WindowInfo {
+        pid: sibling.pid,
+        process_instance: sibling.process_instance.clone(),
+        state: crate::WindowState::default(),
+        ..window("w-sibling", "Sibling document")
+    };
+    let adapter = SequenceAdapter::new(vec![
+        baseline_with_apps(vec![target.clone()]),
+        SignalBaseline {
+            apps: vec![target.clone(), sibling.clone()],
+            windows: vec![sibling_window.clone()],
+            ..empty_baseline()
+        },
+        SignalBaseline {
+            apps: vec![target, sibling],
+            windows: vec![sibling_window, window("w-target", "Target document")],
+            ..empty_baseline()
+        },
+    ]);
+
+    let result = wait_for_event(input("window-opened", Some("TextEdit")), &adapter, None).unwrap();
+
+    assert_eq!(result["found"], true);
+    assert_eq!(result["event"]["window_id"], "w-target");
+    assert_eq!(result["event"]["pid"], 42);
+}
+
+#[test]
 fn app_terminated_wait_still_surfaces_a_genuine_ambiguous_resolution_error() {
     let adapter = SequenceAdapter::new(vec![empty_baseline()]).with_apps(vec![
         app("TextEdit", "generation-a"),
