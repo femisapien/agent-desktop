@@ -18,6 +18,8 @@ static const uint8_t ADPointerSlot = 1;
 @property(nonatomic) bool known;
 @property(nonatomic) struct timespec modified;
 @property(nonatomic) off_t bytes;
+@property(nonatomic) dev_t device;
+@property(nonatomic) ino_t inode;
 @property(nonatomic, strong) NSBitmapImageRep *raster;
 @property(nonatomic) CGSize rasterPixels;
 @end
@@ -114,7 +116,8 @@ static NSImage *ADImageCurrent(ADCursorImageSlot *slot) {
         slot.known = false;
         return nil;
     }
-    bool unchanged = slot.known && info.st_size == slot.bytes &&
+    bool unchanged = slot.known && info.st_dev == slot.device && info.st_ino == slot.inode &&
+                     info.st_size == slot.bytes &&
                      info.st_mtimespec.tv_sec == slot.modified.tv_sec &&
                      info.st_mtimespec.tv_nsec == slot.modified.tv_nsec;
     if (unchanged) {
@@ -137,6 +140,8 @@ static NSImage *ADImageCurrent(ADCursorImageSlot *slot) {
     slot.known = true;
     slot.modified = info.st_mtimespec;
     slot.bytes = info.st_size;
+    slot.device = info.st_dev;
+    slot.inode = info.st_ino;
     slot.raster = nil;
     slot.rasterPixels = CGSizeZero;
     return slot.loaded;

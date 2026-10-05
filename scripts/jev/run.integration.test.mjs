@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -316,5 +316,5 @@ try {
   assert.equal(pasted.events[0].turn.delivery, "delivered_verified");
   console.log("ok");
 } finally {
-  spawnSync("trash", [directory]);
+  rmSync(directory, { recursive: true, force: true });
 }

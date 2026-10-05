@@ -1,6 +1,7 @@
 #import "../../crates/macos/src/system/cursor_overlay_chrome_bridge.m"
 #import "../../crates/macos/src/system/cursor_overlay_image_bridge.m"
 #import <unistd.h>
+#import <sys/time.h>
 
 static void require(bool condition, const char *message) {
     if (!condition) {
@@ -68,6 +69,42 @@ int main(void) {
         require(CGPointEqualToPoint(ADImageLayer.position, pointer.position),
                 "hotspot must sit on the cursor tip");
         require(ADImageLayer.contents != nil, "image must be rasterized");
+
+        NSString *original = writePNG(@"ad-cursor-original", 20, 30);
+        NSString *updated = writePNG(@"ad-cursor-updated", 30, 20);
+        NSMutableData *originalData = [NSMutableData dataWithContentsOfFile:original];
+        NSMutableData *updatedData = [NSMutableData dataWithContentsOfFile:updated];
+        NSUInteger equalBytes = MAX(originalData.length, updatedData.length);
+        originalData.length = updatedData.length = equalBytes;
+        require([originalData writeToFile:original atomically:YES] &&
+                    [updatedData writeToFile:updated atomically:YES],
+                "same-size PNG fixtures must be written");
+        const struct timeval times[2] = {{1700000000, 123456}, {1700000000, 123456}};
+        require(utimes(original.fileSystemRepresentation, times) == 0,
+                "original image mtime must be set");
+        struct stat before;
+        require(stat(original.fileSystemRepresentation, &before) == 0,
+                "original image stat must succeed");
+        agent_desktop_cursor_overlay_image(0, original.fileSystemRepresentation, 0.0, 0.0);
+        ADPointerImageApply(window, pointer);
+        require(pointer.hidden && near(ADImageLayer.bounds.size.width, 20.0) &&
+                    near(ADImageLayer.bounds.size.height, 30.0),
+                "original image must be rendered before replacement");
+        require(rename(updated.fileSystemRepresentation, original.fileSystemRepresentation) == 0 &&
+                    utimes(original.fileSystemRepresentation, times) == 0,
+                "replacement image must keep the original mtime");
+        struct stat after;
+        require(stat(original.fileSystemRepresentation, &after) == 0 &&
+                    before.st_dev == after.st_dev && before.st_ino != after.st_ino &&
+                    before.st_size == after.st_size &&
+                    before.st_mtimespec.tv_sec == after.st_mtimespec.tv_sec &&
+                    before.st_mtimespec.tv_nsec == after.st_mtimespec.tv_nsec,
+                "replacement must change inode while preserving size and mtime");
+        ADPointerImageApply(window, pointer);
+        require(pointer.hidden && near(ADImageLayer.bounds.size.width, 30.0) &&
+                    near(ADImageLayer.bounds.size.height, 20.0),
+                "same-size same-mtime replacement must render the new image");
+        [[NSFileManager defaultManager] removeItemAtPath:original error:nil];
 
         AgentDesktopCursorStyle style = *ADStyle();
         style.size = 4.0;
@@ -166,6 +203,8 @@ int main(void) {
         slot.loaded = throwing;
         slot.known = true;
         slot.bytes = info.st_size;
+        slot.device = info.st_dev;
+        slot.inode = info.st_ino;
         slot.modified = info.st_mtimespec;
         ADPointerImageApply(window, pointer);
         require(!pointer.hidden && ADImageLayer.superlayer == nil,
