@@ -90,22 +90,78 @@ fn find_numbered_surface<T>(
     let Some(expected_number) = expected_number.filter(|number| *number > 0) else {
         return Ok(None);
     };
+    let mut first_children_error = None;
     for window in windows {
         if surface_number(&window)? == Some(expected_number) {
             return Ok(Some(window));
         }
-        for child in children(&window)? {
+        let window_children = match children(&window) {
+            Ok(children) => children,
+            Err(error) => {
+                first_children_error.get_or_insert(error);
+                continue;
+            }
+        };
+        for child in window_children {
             if surface_number(&child)? == Some(expected_number) {
                 return Ok(Some(child));
             }
         }
     }
-    Ok(None)
+    match first_children_error {
+        Some(error) => Err(error),
+        None => Ok(None),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn numbered_surface_finds_later_match_after_children_error() {
+        let found = find_numbered_surface(
+            vec![1, 2],
+            Some(42),
+            |window| match window {
+                1 => Err(AdapterError::timeout("first window children")),
+                _ => Ok(vec![42]),
+            },
+            |number| Ok(Some(*number)),
+        )
+        .unwrap();
+        assert_eq!(found, Some(42));
+    }
+
+    #[test]
+    fn numbered_surface_returns_first_children_error_without_match() {
+        let first_error = AdapterError::timeout("first window children");
+        let error = find_numbered_surface(
+            vec![1, 2, 3],
+            Some(42),
+            |window| match window {
+                1 => Err(first_error.clone()),
+                2 => Ok(vec![4]),
+                _ => Err(AdapterError::new(ErrorCode::ActionFailed, "later children")),
+            },
+            |number| Ok(Some(*number)),
+        )
+        .unwrap_err();
+        assert_eq!(error.code, first_error.code);
+        assert_eq!(error.message, first_error.message);
+    }
+
+    #[test]
+    fn numbered_surface_returns_none_after_complete_search_without_match() {
+        let found = find_numbered_surface(
+            vec![1, 2],
+            Some(42),
+            |window| Ok(vec![window + 2]),
+            |number| Ok(Some(*number)),
+        )
+        .unwrap();
+        assert_eq!(found, None);
+    }
 
     #[test]
     fn numbered_surface_rejects_same_geometry_in_another_window() {
