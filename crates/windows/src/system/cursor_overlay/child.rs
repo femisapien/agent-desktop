@@ -93,6 +93,7 @@ mod imp {
         loop {
             match listener.next_control(host.idle_tick()) {
                 server::Accepted::Control(control) => {
+                    let control = *control;
                     let ours = control.session_id() == session_id
                         && serves_agent(agent_id, control.agent_id(), control.is_disable());
                     if ours {
