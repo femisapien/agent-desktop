@@ -94,6 +94,28 @@ pub(crate) fn token_for_pid(pid: ProcessId) -> Result<Option<String>, AdapterErr
     Ok(ProcessIdentity::capture(pid)?.map(ProcessIdentity::token))
 }
 
+#[cfg(target_os = "windows")]
+pub(crate) fn process_is_running(pid: ProcessId) -> bool {
+    use windows_sys::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0};
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, WaitForSingleObject,
+    };
+
+    let access = PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE;
+    let process = unsafe { OpenProcess(access, 0, u32::from(pid)) };
+    if process.is_null() {
+        return true;
+    }
+    let wait = unsafe { WaitForSingleObject(process, 0) };
+    unsafe { CloseHandle(process) };
+    wait != WAIT_OBJECT_0
+}
+
+#[cfg(not(target_os = "windows"))]
+pub(crate) fn process_is_running(_pid: ProcessId) -> bool {
+    true
+}
+
 /// The image name (executable filename) of the process at `pid`, read from
 /// the ToolHelp process table.
 ///
@@ -256,6 +278,25 @@ mod tests {
             matches_instance(pid, &token).unwrap(),
             "a freshly captured token must match the same process"
         );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn an_exited_process_with_its_child_handle_held_is_not_running() {
+        for exit_code in [0, 259] {
+            let mut child = std::process::Command::new("cmd")
+                .args(["/c", "exit", &exit_code.to_string()])
+                .spawn()
+                .expect("spawn child");
+            let pid = ProcessId::from(child.id());
+            assert_eq!(
+                child.wait().expect("wait for child exit").code(),
+                Some(exit_code)
+            );
+
+            assert!(!process_is_running(pid), "child exited with {exit_code}");
+        }
+        assert!(process_is_running(ProcessId::from(std::process::id())));
     }
 
     /// The recycled-pid case: a well-formed token whose generation does not
