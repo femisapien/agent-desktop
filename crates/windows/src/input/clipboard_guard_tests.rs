@@ -1,6 +1,7 @@
 use super::{MoveableMemory, frees_on_this_thread};
 use agent_desktop_core::{DeliveryDisposition, ErrorCode};
 use windows_sys::Win32::Foundation::GlobalFree;
+use windows_sys::Win32::System::DataExchange::CloseClipboard;
 use windows_sys::Win32::System::Memory::{GlobalLock, GlobalSize, GlobalUnlock};
 
 use crate::input::clipboard_formats::CF_UNICODETEXT;
@@ -48,16 +49,14 @@ fn an_empty_payload_is_refused_before_any_allocation() {
     }
 }
 
-/// `SetClipboardData` requires the calling thread to have opened the
-/// clipboard first; calling it here without `OpenClipboard` fails
-/// deterministically (`ERROR_CLIPBOARD_NOT_OPEN`) regardless of what any
-/// other thread on the box is doing, so this needs no clipboard-ownership
-/// lock the way a real content round-trip would.
 #[test]
 fn set_clipboard_data_without_an_open_clipboard_fails_and_drop_still_frees_the_handle() {
     let guard = MoveableMemory::from_bytes(b"unopened").expect("alloc");
     let before = frees_on_this_thread();
 
+    unsafe {
+        let _ = CloseClipboard();
+    }
     let error = guard
         .set_clipboard_data(CF_UNICODETEXT)
         .expect_err("SetClipboardData must fail without an open clipboard");
