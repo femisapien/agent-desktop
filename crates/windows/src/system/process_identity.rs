@@ -97,19 +97,19 @@ pub(crate) fn token_for_pid(pid: ProcessId) -> Result<Option<String>, AdapterErr
 /// Treats an unreadable process as running so only a confirmed exit changes liveness.
 #[cfg(target_os = "windows")]
 pub(crate) fn process_is_running(pid: ProcessId) -> bool {
-    use windows_sys::Win32::Foundation::{CloseHandle, STILL_ACTIVE};
+    use windows_sys::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0};
     use windows_sys::Win32::System::Threading::{
-        GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+        OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, WaitForSingleObject,
     };
 
-    let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, u32::from(pid)) };
+    let access = PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE;
+    let process = unsafe { OpenProcess(access, 0, u32::from(pid)) };
     if process.is_null() {
         return true;
     }
-    let mut exit_code = 0u32;
-    let read_ok = unsafe { GetExitCodeProcess(process, &mut exit_code) };
+    let wait = unsafe { WaitForSingleObject(process, 0) };
     unsafe { CloseHandle(process) };
-    read_ok == 0 || exit_code == STILL_ACTIVE as u32
+    wait != WAIT_OBJECT_0
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -284,14 +284,19 @@ mod tests {
     #[cfg(target_os = "windows")]
     #[test]
     fn an_exited_process_with_its_child_handle_held_is_not_running() {
-        let mut child = std::process::Command::new("cmd")
-            .args(["/c", "exit", "0"])
-            .spawn()
-            .expect("spawn child");
-        let pid = ProcessId::from(child.id());
-        assert!(child.wait().expect("wait for child exit").success());
+        for exit_code in [0, 259] {
+            let mut child = std::process::Command::new("cmd")
+                .args(["/c", "exit", &exit_code.to_string()])
+                .spawn()
+                .expect("spawn child");
+            let pid = ProcessId::from(child.id());
+            assert_eq!(
+                child.wait().expect("wait for child exit").code(),
+                Some(exit_code)
+            );
 
-        assert!(!process_is_running(pid));
+            assert!(!process_is_running(pid), "child exited with {exit_code}");
+        }
         assert!(process_is_running(ProcessId::from(std::process::id())));
     }
 
