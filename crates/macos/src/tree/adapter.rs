@@ -55,10 +55,9 @@ impl ObservationOps for MacOSAdapter {
     }
 
     fn list_apps(&self, deadline: Deadline) -> Result<Vec<AppInfo>, AdapterError> {
-        Ok(crate::system::app_inventory::list_apps_inventory_until(
+        crate::system::app_inventory::list_apps_complete_until(
             crate::tree::locator_deadline::from_operation(deadline)?,
-        )?
-        .apps)
+        )
     }
 
     fn list_apps_inventory(

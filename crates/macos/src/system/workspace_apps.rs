@@ -102,6 +102,10 @@ impl WindowOwnerSnapshot {
 }
 
 pub(crate) fn list_apps_inventory_until(deadline: Instant) -> Result<AppInventory, AdapterError> {
+    #[cfg(test)]
+    if let Some(inventory) = crate::system::app_inventory::adapter_tests::workspace_inventory() {
+        return Ok(inventory);
+    }
     list_apps_with(deadline, |_| true, true)
 }
 

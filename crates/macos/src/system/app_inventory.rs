@@ -307,3 +307,7 @@ fn matching_pids(apps: &[AppInfo], app_name: &str) -> Vec<ProcessId> {
 #[cfg(test)]
 #[path = "app_inventory_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "app_inventory_adapter_tests.rs"]
+pub(crate) mod adapter_tests;
