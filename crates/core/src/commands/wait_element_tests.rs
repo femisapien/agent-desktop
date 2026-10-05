@@ -2,6 +2,7 @@ use super::test_support::{
     PredicateAdapter, save_ref_in_session, snapshot_with_one_ref, wait_for_element_test,
 };
 use super::*;
+use crate::adapter::NoopAdapter;
 use crate::adapter::{ActionOps, InputOps, ObservationOps, SystemOps};
 use crate::{
     AdapterError, adapter::NativeHandle, commands::wait_predicate, element_state::ElementState,
@@ -11,16 +12,6 @@ use std::sync::{
     Arc,
     atomic::{AtomicU32, Ordering},
 };
-
-struct NoopAdapter;
-
-impl ObservationOps for NoopAdapter {}
-
-impl ActionOps for NoopAdapter {}
-
-impl InputOps for NoopAdapter {}
-
-impl SystemOps for NoopAdapter {}
 
 struct LiveErrorPredicateAdapter {
     drops: Arc<AtomicU32>,

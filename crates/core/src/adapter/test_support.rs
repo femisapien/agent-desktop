@@ -1,3 +1,10 @@
+pub(crate) struct NoopAdapter;
+
+impl super::ObservationOps for NoopAdapter {}
+impl super::ActionOps for NoopAdapter {}
+impl super::InputOps for NoopAdapter {}
+impl super::SystemOps for NoopAdapter {}
+
 macro_rules! complete_live_observation {
     ($role:expr, $name:expr, [$($action:expr),* $(,)?]) => {
         $crate::adapter::complete_live_observation!(
