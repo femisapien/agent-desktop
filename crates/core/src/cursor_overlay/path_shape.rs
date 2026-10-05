@@ -1,7 +1,5 @@
 use super::CursorMotionProfile;
 
-/// Shape knobs for one hand-like cursor path. The default motion profile
-/// reproduces the built-in motion exactly.
 pub(super) struct PathShape {
     pub(super) bow_scale: f64,
     pub(super) overshoot: f64,

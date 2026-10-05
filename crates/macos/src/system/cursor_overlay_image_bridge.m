@@ -69,7 +69,7 @@ static bool ADImagePixelsFit(NSData *data) {
     static const uint8_t png[8] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
     const uint8_t *bytes = data.bytes;
     if (data.length < 8 || memcmp(bytes, png, sizeof(png)) != 0) {
-        return true;
+        return false;
     }
     if (data.length < 24 || memcmp(bytes + 12, "IHDR", 4) != 0) {
         return false;
@@ -80,7 +80,7 @@ static bool ADImagePixelsFit(NSData *data) {
 }
 
 static NSData *ADImageRead(NSString *path, struct stat *info) {
-    int fd = open(path.fileSystemRepresentation, O_RDONLY | O_CLOEXEC);
+    int fd = open(path.fileSystemRepresentation, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
     if (fd < 0) {
         return nil;
     }
@@ -121,9 +121,19 @@ static NSImage *ADImageCurrent(ADCursorImageSlot *slot) {
         return slot.loaded;
     }
     NSData *data = ADImageRead(slot.path, &info);
-    NSImage *image = data != nil && ADImagePixelsFit(data) ? [[NSImage alloc] initWithData:data] : nil;
-    bool usable = image != nil && image.size.width > 0.0 && image.size.height > 0.0;
-    slot.loaded = usable ? image : nil;
+    NSImage *image = nil;
+    @try {
+        if (data != nil && ADImagePixelsFit(data)) {
+            image = [[NSImage alloc] initWithData:data];
+            if (!image.isValid || !isfinite(image.size.width) || !isfinite(image.size.height) ||
+                image.size.width <= 0.0 || image.size.height <= 0.0) {
+                image = nil;
+            }
+        }
+    } @catch (NSException *exception) {
+        image = nil;
+    }
+    slot.loaded = image;
     slot.known = true;
     slot.modified = info.st_mtimespec;
     slot.bytes = info.st_size;
@@ -152,6 +162,11 @@ static CGFloat ADImageFit(CGFloat extent, CGFloat room) {
 }
 
 static id ADImageRasterize(ADCursorImageSlot *slot, NSImage *image, CGSize pixels) {
+    if (!isfinite(pixels.width) || !isfinite(pixels.height) ||
+        pixels.width <= 0.0 || pixels.height <= 0.0 ||
+        pixels.width > ADImageMaxPixels || pixels.height > ADImageMaxPixels) {
+        return nil;
+    }
     if (CGSizeEqualToSize(pixels, slot.rasterPixels) && slot.raster != nil) {
         return (__bridge id)slot.raster.CGImage;
     }
@@ -172,13 +187,18 @@ static id ADImageRasterize(ADCursorImageSlot *slot, NSImage *image, CGSize pixel
         return nil;
     }
     [NSGraphicsContext saveGraphicsState];
-    NSGraphicsContext.currentContext = context;
-    context.imageInterpolation = NSImageInterpolationHigh;
-    [image drawInRect:NSMakeRect(0.0, 0.0, pixels.width, pixels.height)
-             fromRect:NSZeroRect
-            operation:NSCompositingOperationCopy
-             fraction:1.0];
-    [NSGraphicsContext restoreGraphicsState];
+    @try {
+        NSGraphicsContext.currentContext = context;
+        context.imageInterpolation = NSImageInterpolationHigh;
+        [image drawInRect:NSMakeRect(0.0, 0.0, pixels.width, pixels.height)
+                 fromRect:NSZeroRect
+                operation:NSCompositingOperationCopy
+                 fraction:1.0];
+    } @catch (NSException *exception) {
+        return nil;
+    } @finally {
+        [NSGraphicsContext restoreGraphicsState];
+    }
     slot.raster = raster;
     slot.rasterPixels = pixels;
     return (__bridge id)slot.raster.CGImage;

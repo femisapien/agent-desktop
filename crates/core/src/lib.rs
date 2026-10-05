@@ -184,8 +184,7 @@ pub use cursor_overlay::{
     CursorImage, CursorImages, CursorMotion, CursorMotionProfile, CursorOverlayConfig,
     CursorOverlayControl, CursorOverlayInstruction, CursorOverlayStyle, CursorPhase, CursorPose,
     MAX_CURSOR_IMAGE_BYTES, MAX_CURSOR_IMAGE_PATH_BYTES, MAX_CURSOR_IMAGE_PIXELS,
-    MAX_CURSOR_LABEL_BYTES,
-    MAX_CURSOR_LABEL_WORDS, place_label,
+    MAX_CURSOR_LABEL_BYTES, MAX_CURSOR_LABEL_WORDS, place_label,
 };
 pub use deadline::{DEFAULT_OPERATION_TIMEOUT_MS, Deadline};
 pub use delivery_disposition::DeliveryDisposition;

@@ -239,6 +239,8 @@ fn tuned_motion_round_trips_and_unknown_motion_keys_are_rejected() {
         .with_motion(tuned.clone())
         .unwrap();
     let json = serde_json::to_string(&config).unwrap();
+    let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(value["motion"], serde_json::json!({"dwell_ms":80,"seed":3}));
     let parsed: CursorOverlayConfig = serde_json::from_str(&json).unwrap();
     assert_eq!(parsed.motion(), &tuned);
     let partial: CursorMotionProfile = serde_json::from_str(r#"{"dwell_ms":50}"#).unwrap();

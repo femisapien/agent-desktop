@@ -31,7 +31,7 @@ fn only_an_image_change_triggers_a_native_reload() {
     );
     assert_eq!(state.style.size(), 2.0);
     assert_eq!(
-        absorb_style(&enable(style_with(Some("/tmp/b.pdf"), 2.0)), &mut state),
+        absorb_style(&enable(style_with(Some("/tmp/b.png"), 2.0)), &mut state),
         Some(true)
     );
     assert_eq!(

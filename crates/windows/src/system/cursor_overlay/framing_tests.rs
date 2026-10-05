@@ -40,6 +40,39 @@ fn every_variant_round_trips() {
 }
 
 #[test]
+fn motion_and_images_decode_and_validate_without_loading_files() {
+    let bytes = br#"{
+        "action":"enable","session_id":"s0000001","label":"hello",
+        "motion":{"travel_min_ms":100,"travel_max_ms":400,"bow":2.0,
+            "overshoot":0.1,"tremor":2.0,"dwell_ms":100,"seed":42},
+        "style":{"images":{
+            "arrow":{"path":"C:\\missing\\cursor.png","hotspot":{"x":4.0,"y":2.0}},
+            "pointer":{"path":"C:\\missing\\hand.png","hotspot":{"x":8.0,"y":0.0}}
+        }}
+    }"#;
+    let control = decode(bytes).expect("new presentation keys decode");
+    control
+        .validate()
+        .expect("missing artwork is not a protocol error");
+    let motion = control.motion().expect("motion profile");
+    assert_eq!(motion.travel_ms(), (100, 400));
+    assert_eq!(motion.bow(), 2.0);
+    assert_eq!(motion.overshoot(), 0.1);
+    assert_eq!(motion.tremor(), 2.0);
+    assert_eq!(motion.dwell_ms(), 100);
+    assert_eq!(motion.seed(), Some(42));
+    let style = control.style().expect("style");
+    assert_eq!(
+        style.image().expect("arrow").hotspot(),
+        &Point { x: 4.0, y: 2.0 }
+    );
+    assert_eq!(
+        style.pointer_image().expect("pointer").hotspot(),
+        &Point { x: 8.0, y: 0.0 }
+    );
+}
+
+#[test]
 fn an_oversized_payload_is_refused_rather_than_truncated() {
     let oversized = vec![b'x'; MAX_CONTROL_BYTES + 1];
 

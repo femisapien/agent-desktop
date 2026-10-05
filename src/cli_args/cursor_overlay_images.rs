@@ -7,7 +7,7 @@ pub(crate) struct CursorOverlayImagesArgs {
     #[arg(
         long,
         value_name = "PATH",
-        help = "Draw the cursor from a PNG or PDF file instead of the built-in arrow; scaled by --size"
+        help = "Draw the cursor from a PNG file instead of the built-in arrow; scaled by --size"
     )]
     pub image: Option<PathBuf>,
     #[arg(
@@ -21,7 +21,7 @@ pub(crate) struct CursorOverlayImagesArgs {
     #[arg(
         long,
         value_name = "PATH",
-        help = "PNG or PDF shown instead while the cursor rests on a button, link or other pressable control"
+        help = "PNG shown instead while the cursor rests on a button, link or other pressable control"
     )]
     pub pointer_image: Option<PathBuf>,
     #[arg(

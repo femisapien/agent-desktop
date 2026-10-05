@@ -31,6 +31,18 @@ static bool near(CGFloat left, CGFloat right) {
     return fabs(left - right) < 0.001;
 }
 
+@interface ADThrowingImage : NSImage
+@end
+
+@implementation ADThrowingImage
+- (void)drawInRect:(NSRect)rect
+         fromRect:(NSRect)source
+        operation:(NSCompositingOperation)operation
+         fraction:(CGFloat)fraction {
+    [NSException raise:NSInternalInconsistencyException format:@"decode failed"];
+}
+@end
+
 int main(void) {
     @autoreleasepool {
         [NSApplication sharedApplication];
@@ -128,6 +140,65 @@ int main(void) {
         ADPointerImageApply(window, pointer);
         require(!pointer.hidden && ADImageLayer.superlayer == nil,
                 "a PNG declaring more than 8192 pixels per side must fall back to the arrow");
+        NSMutableData *broken = [NSMutableData dataWithBytes:header length:sizeof(header)];
+        uint8_t *bytes = broken.mutableBytes;
+        bytes[18] = bytes[22] = 0;
+        bytes[19] = bytes[23] = 32;
+        require([broken writeToFile:bomb atomically:YES], "invalid fixture must be written");
+        agent_desktop_cursor_overlay_image(0, bomb.fileSystemRepresentation, 0.0, 0.0);
+        ADPointerImageApply(window, pointer);
+        require(!pointer.hidden && ADImageLayer.superlayer == nil,
+                "PNG decode failure must restore the arrow");
+        ADCursorImageSlot *slot = ADImageSlot(0);
+        ADThrowingImage *throwing = [[ADThrowingImage alloc] initWithSize:NSMakeSize(20, 30)];
+        for (NSValue *value in @[
+            [NSValue valueWithSize:NSMakeSize(0, 30)],
+            [NSValue valueWithSize:NSMakeSize(-1, 30)],
+            [NSValue valueWithSize:NSMakeSize(INFINITY, 30)],
+            [NSValue valueWithSize:NSMakeSize(8193, 30)]
+        ]) {
+            require(ADImageRasterize(slot, throwing, value.sizeValue) == nil,
+                    "invalid raster dimensions must be refused before allocation or drawing");
+        }
+        slot.path = small;
+        struct stat info;
+        require(stat(small.fileSystemRepresentation, &info) == 0, "fixture stat must succeed");
+        slot.loaded = throwing;
+        slot.known = true;
+        slot.bytes = info.st_size;
+        slot.modified = info.st_mtimespec;
+        ADPointerImageApply(window, pointer);
+        require(!pointer.hidden && ADImageLayer.superlayer == nil,
+                "a raster decoder exception must restore the arrow");
+        NSBitmapImageRep *replacement =
+            [[NSBitmapImageRep alloc] initWithData:[NSData dataWithContentsOfFile:small]];
+        NSData *tiff = [replacement representationUsingType:NSBitmapImageFileTypeTIFF properties:@{}];
+        require(tiff != nil && [[NSImage alloc] initWithData:tiff].isValid,
+                "replacement must be a decodable non-PNG image");
+        for (NSData *data in @[tiff, [@"%PDF-1.7\ninvalid" dataUsingEncoding:NSUTF8StringEncoding]]) {
+            NSString *swapped = writePNG(@"ad-cursor-swapped", 20, 30);
+            agent_desktop_cursor_overlay_image(0, swapped.fileSystemRepresentation, 0.0, 0.0);
+            ADPointerImageApply(window, pointer);
+            require(pointer.hidden, "PNG must be drawn before replacement");
+            require([data writeToFile:swapped atomically:YES], "replacement must be written");
+            ADPointerImageApply(window, pointer);
+            require(!pointer.hidden && ADImageLayer.superlayer == nil,
+                    "a non-PNG swapped after validation must restore the arrow");
+            [[NSFileManager defaultManager] removeItemAtPath:swapped error:nil];
+        }
+        NSString *fifo = writePNG(@"ad-cursor-fifo", 20, 30);
+        agent_desktop_cursor_overlay_image(0, fifo.fileSystemRepresentation, 0.0, 0.0);
+        ADPointerImageApply(window, pointer);
+        require(pointer.hidden, "PNG must be drawn before FIFO replacement");
+        require([[NSFileManager defaultManager] removeItemAtPath:fifo error:nil],
+                "FIFO fixture must replace the image");
+        require(mkfifo(fifo.fileSystemRepresentation, 0600) == 0, "FIFO must be created");
+        alarm(2);
+        ADPointerImageApply(window, pointer);
+        alarm(0);
+        require(!pointer.hidden && ADImageLayer.superlayer == nil,
+                "a FIFO must promptly restore the arrow without waiting for a writer");
+        [[NSFileManager defaultManager] removeItemAtPath:fifo error:nil];
         [[NSFileManager defaultManager] removeItemAtPath:bomb error:nil];
         [[NSFileManager defaultManager] removeItemAtPath:small error:nil];
     }

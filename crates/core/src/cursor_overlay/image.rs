@@ -1,6 +1,8 @@
 use crate::{AdapterError, ErrorCode, Point};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 
 pub const MAX_CURSOR_IMAGE_PATH_BYTES: usize = 1024;
@@ -10,15 +12,14 @@ pub const MAX_CURSOR_IMAGE_PIXELS: u32 = 8192;
 const PNG_HEADER_BYTES: usize = 24;
 const MAX_HOTSPOT: f64 = 512.0;
 const PNG_MAGIC: &[u8] = b"\x89PNG\r\n\x1a\n";
-const PDF_MAGIC: &[u8] = b"%PDF-";
 
-/// A PNG or PDF drawn in place of the built-in cursor arrow. `hotspot` is the
+/// A PNG drawn in place of the built-in cursor arrow. `hotspot` is the
 /// click point in image points from the image's top-left corner.
 #[derive(Debug, Clone, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CursorImage {
     path: String,
-    #[serde(default = "origin")]
+    #[serde(default = "origin", skip_serializing_if = "is_origin")]
     hotspot: Point,
 }
 
@@ -39,8 +40,12 @@ impl CursorImage {
         if !Path::new(&self.path).is_absolute() {
             return Err(invalid("Cursor image path must be absolute"));
         }
-        if self.format().is_none() {
-            return Err(invalid("Cursor image must be a .png or .pdf file"));
+        if !Path::new(&self.path)
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("png"))
+        {
+            return Err(invalid("cursor images must be PNG"));
         }
         let within = |value: f64| value.is_finite() && (0.0..=MAX_HOTSPOT).contains(&value);
         if !within(self.hotspot.x) || !within(self.hotspot.y) {
@@ -51,15 +56,19 @@ impl CursorImage {
         Ok(self)
     }
 
-    /// Checks that the file is a regular file within the size limit, carries the signature
-    /// its extension promises and, for a PNG, declares at most
+    /// Checks that the file is a regular file within the size limit, carries the PNG
+    /// signature and declares at most
     /// [`MAX_CURSOR_IMAGE_PIXELS`] per side. Every check reads the same open file.
     pub fn verify_file(&self) -> Result<(), AdapterError> {
         let unreadable = |error: std::io::Error| {
             invalid(format!("Cursor image '{}' cannot be read", self.path))
                 .with_platform_detail(error.to_string())
         };
-        let mut file = std::fs::File::open(&self.path).map_err(unreadable)?;
+        let mut options = std::fs::OpenOptions::new();
+        options.read(true);
+        #[cfg(unix)]
+        options.custom_flags(libc::O_NONBLOCK);
+        let mut file = options.open(&self.path).map_err(unreadable)?;
         let metadata = file.metadata().map_err(unreadable)?;
         if !metadata.is_file() {
             return Err(invalid(format!(
@@ -73,21 +82,15 @@ impl CursorImage {
                 MAX_CURSOR_IMAGE_BYTES / (1024 * 1024)
             )));
         }
-        let magic = self.format().unwrap_or(PNG_MAGIC);
-        let header_len = if magic == PNG_MAGIC {
-            PNG_HEADER_BYTES
-        } else {
-            magic.len()
-        };
-        let mut header = vec![0; header_len];
-        file.read_exact(&mut header).map_err(unreadable)?;
-        if !header.starts_with(magic) {
-            return Err(invalid(format!(
-                "Cursor image '{}' content does not match its extension",
-                self.path
-            )));
+        let mut header = [0; PNG_HEADER_BYTES];
+        file.read_exact(&mut header[..PNG_MAGIC.len()])
+            .map_err(unreadable)?;
+        if !header.starts_with(PNG_MAGIC) {
+            return Err(invalid("cursor images must be PNG"));
         }
-        if magic == PNG_MAGIC && !png_dimensions_fit(&header) {
+        file.read_exact(&mut header[PNG_MAGIC.len()..])
+            .map_err(unreadable)?;
+        if !png_dimensions_fit(&header) {
             return Err(invalid(format!(
                 "Cursor image PNG must be at most {MAX_CURSOR_IMAGE_PIXELS} pixels per side"
             )));
@@ -102,20 +105,8 @@ impl CursorImage {
     pub const fn hotspot(&self) -> &Point {
         &self.hotspot
     }
-
-    fn format(&self) -> Option<&'static [u8]> {
-        let extension = Path::new(&self.path).extension()?.to_str()?;
-        if extension.eq_ignore_ascii_case("png") {
-            Some(PNG_MAGIC)
-        } else if extension.eq_ignore_ascii_case("pdf") {
-            Some(PDF_MAGIC)
-        } else {
-            None
-        }
-    }
 }
 
-/// Reads width and height from the IHDR chunk that follows the PNG signature.
 fn png_dimensions_fit(header: &[u8]) -> bool {
     let side = |at: usize| {
         header
@@ -137,6 +128,10 @@ fn escaped_len(value: &str) -> usize {
 
 const fn origin() -> Point {
     Point { x: 0.0, y: 0.0 }
+}
+
+fn is_origin(point: &Point) -> bool {
+    *point == origin()
 }
 
 fn invalid(message: impl Into<String>) -> AdapterError {

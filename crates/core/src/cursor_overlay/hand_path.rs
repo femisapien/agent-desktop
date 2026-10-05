@@ -58,7 +58,6 @@ impl HandPath {
         self.destination.clone()
     }
 
-    /// Fitts-style travel time mapped linearly onto `travel` (min, max) ms.
     pub(super) fn duration_ms(&self, travel: (u64, u64)) -> u64 {
         let distance = distance_between(&self.start, &self.destination);
         if distance < 1.5 {

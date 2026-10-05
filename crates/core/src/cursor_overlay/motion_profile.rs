@@ -18,17 +18,26 @@ const MAX_DWELL_MS: u64 = 300;
 #[derive(Debug, Clone, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CursorMotionProfile {
-    #[serde(default = "default_travel_min_ms")]
+    #[serde(
+        default = "default_travel_min_ms",
+        skip_serializing_if = "is_default_travel_min_ms"
+    )]
     travel_min_ms: u64,
-    #[serde(default = "default_travel_max_ms")]
+    #[serde(
+        default = "default_travel_max_ms",
+        skip_serializing_if = "is_default_travel_max_ms"
+    )]
     travel_max_ms: u64,
-    #[serde(default = "default_bow")]
+    #[serde(default = "default_bow", skip_serializing_if = "is_default_bow")]
     bow: f64,
-    #[serde(default = "default_overshoot")]
+    #[serde(
+        default = "default_overshoot",
+        skip_serializing_if = "is_default_overshoot"
+    )]
     overshoot: f64,
-    #[serde(default = "default_tremor")]
+    #[serde(default = "default_tremor", skip_serializing_if = "is_default_tremor")]
     tremor: f64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_zero")]
     dwell_ms: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     seed: Option<u64>,
@@ -162,4 +171,28 @@ const fn default_overshoot() -> f64 {
 
 const fn default_tremor() -> f64 {
     DEFAULT_TREMOR
+}
+
+fn is_default_travel_min_ms(value: &u64) -> bool {
+    *value == DEFAULT_TRAVEL_MIN_MS
+}
+
+fn is_default_travel_max_ms(value: &u64) -> bool {
+    *value == DEFAULT_TRAVEL_MAX_MS
+}
+
+fn is_default_bow(value: &f64) -> bool {
+    *value == DEFAULT_BOW
+}
+
+fn is_default_overshoot(value: &f64) -> bool {
+    *value == DEFAULT_OVERSHOOT
+}
+
+fn is_default_tremor(value: &f64) -> bool {
+    *value == DEFAULT_TREMOR
+}
+
+fn is_zero(value: &u64) -> bool {
+    *value == 0
 }

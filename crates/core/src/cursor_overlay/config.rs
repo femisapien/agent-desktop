@@ -78,14 +78,16 @@ impl CursorOverlayConfig {
                 "Agent cursor label requires agent cursor mode 'on'",
             ));
         }
-        if self
-            .label
-            .as_deref()
-            .is_some_and(|label| label.trim().len() > MAX_CURSOR_LABEL_BYTES)
-        {
+        if self.label.as_deref().is_some_and(|label| {
+            serde_json::to_string(label.trim()).map_or(true, |json| {
+                json.len().saturating_sub(2) > MAX_CURSOR_LABEL_BYTES
+            })
+        }) {
             return Err(AdapterError::new(
                 ErrorCode::InvalidArgs,
-                format!("Agent cursor label must be at most {MAX_CURSOR_LABEL_BYTES} bytes"),
+                format!(
+                    "Agent cursor label must be at most {MAX_CURSOR_LABEL_BYTES} bytes once JSON-escaped"
+                ),
             ));
         }
         self.label = self
