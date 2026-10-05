@@ -802,19 +802,37 @@ jobs:
   #   1. Assert the Cargo.toml profile setting directly (simpler and more
   #      reliable than a build.rs env check for a dual cdylib+rlib crate).
   #   2. Build the actual feature-gated cdylib panic entrypoint, load it with
-  #      dlopen from a C process, and require the exported ABI boundary to
+  #      the standalone loader probe, and require the exported ABI boundary to
   #      return ErrInternal instead of aborting the host.
   ffi-panic-guard:
-    name: FFI Panic Guard
-    runs-on: macos-latest
+    name: FFI Panic Guard (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+          - target: x86_64-apple-darwin
+            runner: macos-latest
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-22.04
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-22.04-arm
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+          - target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Rust toolchain
-        run: rustup show
+        run: |
+          rustup show
+          rustup target add ${{ matrix.target }}
 
       - name: Cache cargo registry
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -827,6 +845,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: Assert release-ffi profile keeps panic=unwind
+        shell: bash
         run: |
           if ! grep -A5 '\[profile\.release-ffi\]' Cargo.toml | grep -q 'panic.*=.*"unwind"'; then
             echo "FAIL: [profile.release-ffi] must set panic=\"unwind\" — a flip to"
@@ -836,7 +855,8 @@ jobs:
           echo "OK: release-ffi profile retains panic=\"unwind\""
 
       - name: Prove the shipped cdylib catches an exported-boundary panic
-        run: bash crates/ffi/tests/run_cdylib_panic_probe.sh
+        shell: bash
+        run: bash crates/ffi/tests/run_cdylib_panic_probe.sh ${{ matrix.target }}
 
   # Gate 3 — Stub-adapter passthrough tests: the Family-B command-backed
   # entrypoints (ad_snapshot, ad_status, ad_wait, ad_execute_by_ref,
