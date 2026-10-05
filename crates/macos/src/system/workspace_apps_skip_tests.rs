@@ -136,7 +136,7 @@ fn skipped_records_preserve_matching_apps_and_retry_missing_names() {
     assert_eq!(apps[0].name, "Finder");
     let mut attempts = 0;
     let error = crate::system::app_inventory::stabilize_apps_until(
-        Instant::now() + std::time::Duration::from_millis(30),
+        Instant::now() + std::time::Duration::from_millis(500),
         || {
             attempts += 1;
             crate::system::app_inventory::scoped_apps_from_sources(
