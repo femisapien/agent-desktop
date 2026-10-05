@@ -35,6 +35,12 @@ fn decode_window(
         ));
     }
     let id = required_adapter_string(w.id, "window id")?;
+    if id.is_empty() {
+        return Err(AdapterError::new(
+            agent_desktop_core::ErrorCode::InvalidArgs,
+            "window id is empty",
+        ));
+    }
     let title = required_adapter_string(w.title, "window title")?;
     let app = optional_adapter_string(w.app_name, "window app_name")?.unwrap_or_default();
     let bounds = if w.has_bounds {
@@ -110,6 +116,18 @@ mod tests {
 
         assert_eq!(error.code, ErrorCode::InvalidArgs);
         assert!(error.message.contains("version or size"));
+    }
+
+    #[test]
+    fn exact_window_rejects_an_empty_window_id() {
+        let id = CString::new("").unwrap();
+        let title = CString::new("Main").unwrap();
+        let exact = window(id.as_ptr(), title.as_ptr(), std::ptr::null());
+
+        let error = ad_exact_window_to_core(&exact).unwrap_err();
+
+        assert_eq!(error.code, ErrorCode::InvalidArgs);
+        assert!(error.message.contains("window id is empty"));
     }
 
     #[test]

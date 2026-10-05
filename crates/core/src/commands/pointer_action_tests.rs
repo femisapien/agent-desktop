@@ -214,3 +214,83 @@ fn explicitly_retryable_app_unresponsive_recovers_within_shared_deadline() {
     assert_eq!((resolved.point.x, resolved.point.y), (30.0, 50.0));
     assert_eq!(adapter.resolve_calls.load(Ordering::SeqCst), 3);
 }
+
+struct ZeroSizeUnscrollableAdapter {
+    scrolls: AtomicU32,
+    leases: AtomicU32,
+}
+
+impl ObservationOps for ZeroSizeUnscrollableAdapter {
+    fn resolve_element_strict(
+        &self,
+        _entry: &RefEntry,
+        _deadline: crate::Deadline,
+    ) -> Result<NativeHandle, AdapterError> {
+        Ok(NativeHandle::null())
+    }
+
+    fn get_element_bounds(
+        &self,
+        _handle: &NativeHandle,
+        _deadline: crate::Deadline,
+    ) -> Result<Option<Rect>, AdapterError> {
+        Ok(Some(Rect {
+            x: 5.0,
+            y: 5.0,
+            width: 0.0,
+            height: 0.0,
+        }))
+    }
+}
+
+impl ActionOps for ZeroSizeUnscrollableAdapter {
+    fn scroll_into_view(
+        &self,
+        _handle: &NativeHandle,
+        _lease: &crate::InteractionLease,
+    ) -> Result<(), AdapterError> {
+        self.scrolls.fetch_add(1, Ordering::SeqCst);
+        Ok(())
+    }
+}
+
+impl InputOps for ZeroSizeUnscrollableAdapter {}
+
+impl SystemOps for ZeroSizeUnscrollableAdapter {
+    fn acquire_interaction_lease(
+        &self,
+        deadline: crate::Deadline,
+    ) -> Result<crate::InteractionLease, AdapterError> {
+        self.leases.fetch_add(1, Ordering::SeqCst);
+        crate::InteractionLease::guarded(deadline, ())
+    }
+}
+
+#[test]
+fn an_unchanged_bounds_hash_after_scroll_stops_the_scroll_retries() {
+    let _guard = HomeGuard::new();
+    let snapshot_id = point_ref_snapshot();
+    let adapter = ZeroSizeUnscrollableAdapter {
+        scrolls: AtomicU32::new(0),
+        leases: AtomicU32::new(0),
+    };
+    let deadline = crate::Deadline::after(250).unwrap();
+
+    let err = match wait_for_point_with_deadline(
+        point_args(&snapshot_id),
+        deadline,
+        &adapter,
+        &crate::CommandContext::default(),
+    ) {
+        Ok(_) => panic!("a permanently zero-size target cannot become actionable"),
+        Err(err) => err,
+    };
+
+    assert_eq!(err.code(), "TIMEOUT");
+    assert_eq!(
+        adapter.scrolls.load(Ordering::SeqCst),
+        1,
+        "a scroll that left the target bounds unchanged must not be retried"
+    );
+    assert_eq!(adapter.leases.load(Ordering::SeqCst), 1);
+}

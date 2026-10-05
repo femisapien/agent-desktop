@@ -28,6 +28,8 @@ struct BridgedWorkspaceSnapshot {
     applications: Vec<BridgedApplication>,
     frontmost_pid: i32,
     frontmost_launch_time: NullableLaunchTime,
+    #[serde(default)]
+    skipped: Vec<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
@@ -166,7 +168,6 @@ fn apps_from_json_with(
     mut resolve: impl FnMut(i32) -> Result<Option<String>, AdapterError>,
 ) -> Result<Vec<AppInfo>, AdapterError> {
     let bridged = bridged_snapshot(bytes)?;
-    let mut seen_pids = rustc_hash::FxHashSet::default();
     let mut apps = Vec::with_capacity(bridged.applications.len());
     for app in bridged
         .applications
@@ -174,17 +175,14 @@ fn apps_from_json_with(
         .filter(|app| app.activation_policy != ActivationPolicy::Prohibited)
         .filter(include)
     {
-        ensure_before_deadline(deadline)?;
-        if !valid_application(&app) || !seen_pids.insert(app.pid) {
-            return Err(inventory_error(
-                "AppKit returned invalid running-application identity",
-            ));
-        }
+        ensure_before_deadline(deadline)
+            .map_err(|error| records::with_skipped(error, &bridged.skipped))?;
         let process_instance = match resolve(app.pid) {
             Ok(Some(instance)) => instance,
             Ok(None) => {
-                return Err(inventory_error(
-                    "Selected application exited during inventory",
+                return Err(records::with_skipped(
+                    inventory_error("Selected application exited during inventory"),
+                    &bridged.skipped,
                 ));
             }
             Err(error)
@@ -193,7 +191,7 @@ fn apps_from_json_with(
             {
                 continue;
             }
-            Err(error) => return Err(error),
+            Err(error) => return Err(records::with_skipped(error, &bridged.skipped)),
         };
         apps.push(AppInfo {
             name: app.name,
@@ -203,7 +201,8 @@ fn apps_from_json_with(
             presentation: Some(presentation_of(app.activation_policy)),
         });
     }
-    ensure_before_deadline(deadline)?;
+    ensure_before_deadline(deadline)
+        .map_err(|error| records::with_skipped(error, &bridged.skipped))?;
     Ok(apps)
 }
 
@@ -221,27 +220,19 @@ fn window_owner_snapshot_from_json(
     deadline: Instant,
 ) -> Result<WindowOwnerSnapshot, AdapterError> {
     let bridged = bridged_snapshot(bytes)?;
-    let mut seen_pids = rustc_hash::FxHashSet::default();
     let mut owners = Vec::with_capacity(bridged.applications.len());
     for app in bridged
         .applications
         .into_iter()
         .filter(|app| app.activation_policy != ActivationPolicy::Prohibited)
     {
-        ensure_before_deadline(deadline)?;
+        ensure_before_deadline(deadline)
+            .map_err(|error| records::with_skipped(error, &bridged.skipped))?;
         let Some(launch_time) = app.launch_time.value() else {
             return Err(inventory_error(
                 "AppKit returned invalid window-owner identity",
             ));
         };
-        if launch_time.is_some_and(|value| !valid_launch_time(value))
-            || !valid_application(&app)
-            || !seen_pids.insert(app.pid)
-        {
-            return Err(inventory_error(
-                "AppKit returned invalid window-owner identity",
-            ));
-        }
         owners.push(WindowOwner {
             pid: app.pid,
             name: app.name,
@@ -256,9 +247,21 @@ fn window_owner_snapshot_from_json(
             "AppKit returned incomplete frontmost-application identity",
         ));
     };
-    let frontmost_pid =
-        validate_frontmost(&mut owners, bridged.frontmost_pid, frontmost_launch_time)?;
-    ensure_before_deadline(deadline)?;
+    let frontmost_pid = if bridged
+        .skipped
+        .iter()
+        .any(|record| record["pid"].as_i64() == Some(i64::from(bridged.frontmost_pid)))
+        && !owners
+            .iter()
+            .any(|owner| owner.pid == bridged.frontmost_pid)
+    {
+        None
+    } else {
+        validate_frontmost(&mut owners, bridged.frontmost_pid, frontmost_launch_time)
+            .map_err(|error| records::with_skipped(error, &bridged.skipped))?
+    };
+    ensure_before_deadline(deadline)
+        .map_err(|error| records::with_skipped(error, &bridged.skipped))?;
     Ok(WindowOwnerSnapshot {
         owners,
         frontmost_pid,
@@ -299,23 +302,6 @@ fn validate_frontmost(
     Ok(Some(pid))
 }
 
-fn bridged_snapshot(bytes: &[u8]) -> Result<BridgedWorkspaceSnapshot, AdapterError> {
-    if bytes.len() > MAX_SNAPSHOT_BYTES {
-        return Err(inventory_error("AppKit returned an oversized snapshot"));
-    }
-    serde_json::from_slice(bytes).map_err(|_| inventory_error("AppKit returned invalid JSON"))
-}
-
-fn valid_application(app: &BridgedApplication) -> bool {
-    app.pid > 0
-        && !app.name.trim().is_empty()
-        && app.name.len() <= MAX_FIELD_BYTES
-        && app
-            .bundle_id
-            .as_ref()
-            .is_none_or(|bundle_id| bundle_id.len() <= MAX_FIELD_BYTES)
-}
-
 fn valid_launch_time(value: f64) -> bool {
     value.is_finite() && value > 0.0
 }
@@ -344,3 +330,11 @@ mod pid_tests;
 #[cfg(test)]
 #[path = "workspace_apps_tests.rs"]
 mod tests;
+
+#[path = "workspace_apps_records.rs"]
+mod records;
+use records::bridged_snapshot;
+
+#[cfg(test)]
+#[path = "workspace_apps_skip_tests.rs"]
+mod skip_tests;

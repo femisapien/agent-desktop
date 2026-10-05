@@ -89,6 +89,7 @@ pub(crate) fn wait_for_event(
                             &requested,
                             input.window_id.as_deref(),
                             input.window_title.as_deref(),
+                            filter.process.as_ref().map(|process| process.pid),
                         ) {
                             if confirm_app_terminated(adapter, found, diff_base, deadline) {
                                 let elapsed = start.elapsed().as_millis();
@@ -274,7 +275,7 @@ fn validate_signal_scope(filter: &SignalFilter, baseline: &SignalBaseline) -> Re
                 .map(|surface| (surface.pid, Some(surface.process_instance.as_str()))),
         );
     if let Some((pid, instance)) = observed.into_iter().find(|(pid, instance)| {
-        *pid != expected.pid || *instance != Some(expected.instance.as_str())
+        *pid == expected.pid && *instance != Some(expected.instance.as_str())
     }) {
         return Err(AdapterError::new(
             ErrorCode::StaleRef,
@@ -298,9 +299,15 @@ fn find_match<'a>(
     requested: &EventKind,
     window_id: Option<&str>,
     window_title: Option<&str>,
+    pinned_pid: Option<crate::ProcessId>,
 ) -> Option<&'a UiEvent> {
     events.iter().find(|event| {
         if !requested.same_variant(&event.kind) {
+            return false;
+        }
+        if let Some(pid) = pinned_pid
+            && event.pid.is_some_and(|observed| observed != pid)
+        {
             return false;
         }
         if let Some(id) = window_id {

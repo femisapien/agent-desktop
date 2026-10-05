@@ -1,4 +1,5 @@
 use super::*;
+use crate::adapter::NoopAdapter as DefaultSurfaceAdapter;
 use crate::adapter::{ActionOps, InputOps, ObservationOps, SystemOps, WindowFilter};
 use crate::context::{CommandContext, WaitSelector};
 use crate::refs_test_support::HomeGuard;
@@ -17,13 +18,6 @@ impl SystemOps for NoopAdapter {
         vec![SnapshotSurface::Window]
     }
 }
-
-struct DefaultSurfaceAdapter;
-
-impl ObservationOps for DefaultSurfaceAdapter {}
-impl ActionOps for DefaultSurfaceAdapter {}
-impl InputOps for DefaultSurfaceAdapter {}
-impl SystemOps for DefaultSurfaceAdapter {}
 
 struct WaitSnapshotAdapter;
 

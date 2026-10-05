@@ -71,7 +71,7 @@ pub(crate) enum ClaimError {
 
 #[cfg(target_os = "windows")]
 pub(crate) enum Accepted {
-    Control(CursorOverlayControl),
+    Control(Box<CursorOverlayControl>),
     /// Nothing arrived within the tick.
     Idle,
     Broken(AdapterError),
@@ -161,7 +161,7 @@ impl Listener {
         match self.arrivals.recv_timeout(tick) {
             Ok(control) => {
                 self.waiting.store(false, Ordering::Release);
-                Accepted::Control(control)
+                Accepted::Control(Box::new(control))
             }
             Err(RecvTimeoutError::Timeout) => Accepted::Idle,
             Err(RecvTimeoutError::Disconnected) => Accepted::Broken(AdapterError::internal(

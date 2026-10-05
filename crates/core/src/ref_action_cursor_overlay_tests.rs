@@ -168,6 +168,10 @@ fn enabled_cursor_moves_before_dispatch_then_clicks_after_it() {
         "the cursor sets off before the action runs"
     );
     assert!(travel.target().is_none());
+    assert!(
+        !travel.is_pointer(),
+        "clicking into a text field keeps the arrow"
+    );
     assert_eq!(click.destination(), &center);
     assert!(
         click.is_click(),
@@ -388,3 +392,6 @@ fn headed_and_headless_contexts_present_the_same_cursor() {
     assert_eq!(presented[0].instruction(), presented[2].instruction());
     assert_eq!(presented[1].instruction(), presented[3].instruction());
 }
+
+#[path = "ref_action_cursor_overlay_unknown_tests.rs"]
+mod unknown_hit_tests;

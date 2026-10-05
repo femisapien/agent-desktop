@@ -57,12 +57,13 @@ fn start_session() -> String {
 
 fn enable_args() -> CursorOverlayArgs {
     CursorOverlayArgs {
-        action: CursorOverlayAction::Enable(CursorOverlayEnableArgs {
+        action: CursorOverlayAction::Enable(Box::new(CursorOverlayEnableArgs {
             multi_agent: false,
             label: None,
             max_words: None,
             style: CursorOverlayStyleArgs::default(),
-        }),
+            motion: Default::default(),
+        })),
     }
 }
 
