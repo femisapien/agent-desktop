@@ -82,12 +82,14 @@ fn source_surface_scoped_roots(
                         .and_then(|details| details["kind"].as_str())
                         == Some("resolution_window_bridge_miss") =>
                 {
-                    let root = super::window_surface::surface_for_pid_with_bounds_hash(
-                        pid,
-                        entry.source.source_surface,
-                        entry.source.source_window_bounds_hash,
-                        deadline,
-                    )?;
+                    let root = saved_surface_fallback(entry, |number| {
+                        super::window_surface::surface_for_pid_with_window_number(
+                            pid,
+                            entry.source.source_surface,
+                            Some(number),
+                            deadline,
+                        )
+                    })?;
                     let root = root
                         .ok_or_else(|| AdapterError::element_not_found("saved source surface"))?;
                     return Ok(CandidateRoots {
@@ -375,3 +377,14 @@ pub(super) fn source_window_number(entry: &RefEntry) -> Option<i64> {
         .ok()?;
     (number > 0).then_some(number)
 }
+
+fn saved_surface_fallback<T>(
+    entry: &RefEntry,
+    find_surface: impl FnOnce(i64) -> Result<Option<T>, AdapterError>,
+) -> Result<Option<T>, AdapterError> {
+    source_window_number(entry).map_or(Ok(None), find_surface)
+}
+
+#[cfg(test)]
+#[path = "resolve_surface_fallback_tests.rs"]
+mod surface_fallback_tests;

@@ -24,9 +24,16 @@ pub(super) fn verify_source_application(
     )?;
     if source_app_matches(expected, actual.as_deref(), || {
         let pid = crate::system::process_identity::to_pid_t(entry.process.pid)?;
-        let inventory =
-            crate::system::workspace_apps::window_owner_snapshot_until(context.deadline)?;
-        Ok(inventory.owner(pid).map(|owner| owner.name.clone()))
+        let records = crate::system::cg_window::window_records_until(
+            context.deadline,
+            crate::system::cg_window::WindowRecordScope::Pid(pid),
+        )?;
+        Ok(source_names_for_pid(
+            pid,
+            records
+                .iter()
+                .map(|record| (record.pid, record.app_name.as_str())),
+        ))
     })? {
         return Ok(());
     }
@@ -45,12 +52,25 @@ pub(super) fn verify_source_application(
 fn source_app_matches(
     expected: &str,
     title: Option<&str>,
-    inventory_name: impl FnOnce() -> Result<Option<String>, AdapterError>,
+    inventory_names: impl FnOnce() -> Result<Vec<String>, AdapterError>,
 ) -> Result<bool, AdapterError> {
     if let Some(title) = title.filter(|title| !title.trim().is_empty()) {
         return Ok(agent_desktop_core::app_name_matches(title, expected));
     }
-    Ok(inventory_name()?.is_some_and(|name| agent_desktop_core::app_name_matches(&name, expected)))
+    Ok(inventory_names()?
+        .iter()
+        .any(|name| agent_desktop_core::app_name_matches(name, expected)))
+}
+
+fn source_names_for_pid<'a>(
+    pid: i32,
+    records: impl IntoIterator<Item = (i32, &'a str)>,
+) -> Vec<String> {
+    records
+        .into_iter()
+        .filter(|(owner, _)| *owner == pid)
+        .map(|(_, name)| name.to_owned())
+        .collect()
 }
 
 #[cfg(test)]
@@ -60,14 +80,31 @@ mod tests {
     #[test]
     fn blank_title_uses_inventory_name() {
         for title in [None, Some(""), Some(" \t\n")] {
-            assert!(source_app_matches("Fixture", title, || Ok(Some("fIXTURE".into()))).unwrap());
+            assert!(source_app_matches("Fixture", title, || Ok(vec!["fIXTURE".into()])).unwrap());
         }
     }
 
     #[test]
     fn blank_title_rejects_different_or_missing_inventory_name() {
-        for name in [None, Some("Other".into())] {
-            assert!(!source_app_matches("Fixture", Some(" "), || Ok(name)).unwrap());
+        for names in [vec![], vec!["Other".into()]] {
+            assert!(!source_app_matches("Fixture", Some(" "), || Ok(names)).unwrap());
+        }
+    }
+
+    #[test]
+    fn blank_title_matches_saved_cg_owner_names_for_same_pid() {
+        let records = [(7, "CG Owner"), (7, "CG Alias"), (8, "Other PID")];
+        for expected in ["CG Owner", "CG Alias"] {
+            assert!(
+                source_app_matches(expected, None, || Ok(source_names_for_pid(7, records)))
+                    .unwrap()
+            );
+        }
+        for expected in ["Workspace Display Name", "Other PID"] {
+            assert!(
+                !source_app_matches(expected, None, || Ok(source_names_for_pid(7, records)))
+                    .unwrap()
+            );
         }
     }
 

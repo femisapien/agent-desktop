@@ -1,4 +1,4 @@
-use agent_desktop_core::{AdapterError, ErrorCode, Rect, SnapshotSurface, WindowInfo};
+use agent_desktop_core::{AdapterError, ErrorCode, SnapshotSurface, WindowInfo};
 use std::time::Instant;
 
 use super::AXElement;
@@ -13,13 +13,12 @@ pub(crate) fn surface_for_window(
         |owner| super::surfaces::surface_in_window(&owner, surface, deadline),
         || {
             let pid = crate::system::process_identity::to_pid_t(window.pid)?;
-            let Some(found) = surface_with_frame(pid, surface, deadline)? else {
-                return Ok(None);
-            };
-            Ok(window
-                .bounds
-                .filter(|bounds| frames_match(&found.1, bounds))
-                .map(|_| found.0))
+            surface_for_pid_with_window_number(
+                pid,
+                surface,
+                crate::system::window_resolve::parse_window_number(&window.id),
+                deadline,
+            )
         },
     )
 }
@@ -45,141 +44,157 @@ fn resolve_owned_surface<T>(
     }
 }
 
-#[cfg(target_os = "macos")]
-pub(super) fn surface_for_pid_with_bounds_hash(
+pub(super) fn surface_for_pid_with_window_number(
     pid: i32,
     surface: SnapshotSurface,
-    expected_hash: Option<u64>,
+    expected_number: Option<i64>,
     deadline: Instant,
 ) -> Result<Option<AXElement>, AdapterError> {
-    let Some(expected_hash) = expected_hash else {
+    if expected_number.is_none() {
+        return Ok(None);
+    }
+    let app = super::element::element_for_pid(pid);
+    let mut windows = super::surface_read::elements(&app, "AXWindows", deadline)?;
+    if let Some(focused) = super::surfaces::focused_surface_for_pid(pid, deadline)? {
+        super::element_dedupe::push_unique(&mut windows, focused);
+    }
+    find_numbered_surface(
+        windows,
+        expected_number,
+        |window| super::surface_read::elements(window, "AXChildren", deadline),
+        |element| {
+            let matches = match surface {
+                SnapshotSurface::Sheet => {
+                    super::surfaces::role_or_subrole_matches(element, "AXSheet", deadline)?
+                }
+                SnapshotSurface::Popover => {
+                    super::surfaces::role_or_subrole_matches(element, "AXPopover", deadline)?
+                }
+                SnapshotSurface::Alert => super::surfaces::is_alert(element, deadline)?,
+                _ => return Err(AdapterError::not_supported("window-owned surface")),
+            };
+            if !matches {
+                return Ok(None);
+            }
+            crate::system::window_resolve::ax_window_id_with_deadline(element, deadline)
+        },
+    )
+}
+
+fn find_numbered_surface<T>(
+    windows: Vec<T>,
+    expected_number: Option<i64>,
+    mut children: impl FnMut(&T) -> Result<Vec<T>, AdapterError>,
+    mut surface_number: impl FnMut(&T) -> Result<Option<i64>, AdapterError>,
+) -> Result<Option<T>, AdapterError> {
+    let Some(expected_number) = expected_number.filter(|number| *number > 0) else {
         return Ok(None);
     };
-    Ok(surface_with_frame(pid, surface, deadline)?
-        .filter(|(_, bounds)| saved_window_frame_matches(bounds, Some(expected_hash)))
-        .map(|(element, _)| element))
-}
-
-fn surface_with_frame(
-    pid: i32,
-    surface: SnapshotSurface,
-    deadline: Instant,
-) -> Result<Option<(AXElement, Rect)>, AdapterError> {
-    let element = match surface {
-        SnapshotSurface::Sheet => super::surfaces::sheet_for_pid(pid, deadline)?,
-        SnapshotSurface::Popover => super::surfaces::popover_for_pid(pid, deadline)?,
-        SnapshotSurface::Alert => super::surfaces::alert_for_pid(pid, deadline)?,
-        _ => return Err(AdapterError::not_supported("window-owned surface")),
-    };
-    let Some(element) = element else {
-        return Ok(None);
-    };
-    let bounds = super::element_bounds::read_bounds_with_deadline(&element, deadline)?;
-    Ok(bounds.map(|bounds| (element, bounds)))
-}
-
-#[cfg(target_os = "macos")]
-fn saved_window_frame_matches(found: &Rect, expected_hash: Option<u64>) -> bool {
-    expected_hash.is_some() && found.bounds_hash() == expected_hash
-}
-
-fn frames_match(found: &Rect, window: &Rect) -> bool {
-    found.validate().is_ok()
-        && window.validate().is_ok()
-        && (found.x - window.x).abs() <= 2.0
-        && (found.y - window.y).abs() <= 2.0
-        && (found.width - window.width).abs() <= 2.0
-        && (found.height - window.height).abs() <= 2.0
+    for window in windows {
+        if surface_number(&window)? == Some(expected_number) {
+            return Ok(Some(window));
+        }
+        for child in children(&window)? {
+            if surface_number(&child)? == Some(expected_number) {
+                return Ok(Some(child));
+            }
+        }
+    }
+    Ok(None)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn frame() -> Rect {
-        Rect {
+    #[test]
+    fn numbered_surface_rejects_same_geometry_in_another_window() {
+        let bounds = agent_desktop_core::Rect {
             x: 10.0,
             y: 20.0,
             width: 300.0,
             height: 200.0,
-        }
-    }
-
-    #[test]
-    fn frames_match_identical_bounds() {
-        assert!(frames_match(&frame(), &frame()));
-    }
-
-    #[test]
-    fn frames_match_within_two_points() {
-        let found = Rect {
-            x: 12.0,
-            y: 18.0,
-            width: 302.0,
-            height: 198.0,
         };
-        assert!(frames_match(&found, &frame()));
-    }
-
-    #[test]
-    fn frames_reject_position_outside_tolerance() {
-        for found in [
-            Rect {
-                x: 12.01,
-                ..frame()
-            },
-            Rect {
-                y: 17.99,
-                ..frame()
-            },
-        ] {
-            assert!(!frames_match(&found, &frame()));
+        let found = find_numbered_surface(
+            vec![(Some(41), bounds), (None, bounds)],
+            Some(42),
+            |_| Ok(vec![(Some(43), bounds), (Some(42), bounds)]),
+            |candidate| Ok(candidate.0),
+        )
+        .unwrap();
+        assert_eq!(found, Some((Some(42), bounds)));
+        for number in [None, Some(41)] {
+            assert!(
+                find_numbered_surface(
+                    vec![(number, bounds)],
+                    Some(42),
+                    |_| Ok(vec![]),
+                    |candidate| Ok(candidate.0)
+                )
+                .unwrap()
+                .is_none()
+            );
         }
     }
 
     #[test]
-    fn frames_reject_different_size() {
-        for found in [
-            Rect {
-                width: 303.0,
-                ..frame()
-            },
-            Rect {
-                height: 197.0,
-                ..frame()
-            },
-        ] {
-            assert!(!frames_match(&found, &frame()));
-        }
+    fn numbered_surface_accepts_window_itself_and_requires_saved_number() {
+        assert_eq!(
+            find_numbered_surface(
+                vec![42],
+                Some(42),
+                |_| panic!("already matched"),
+                |number| Ok(Some(*number))
+            )
+            .unwrap(),
+            Some(42)
+        );
+        assert!(
+            find_numbered_surface(
+                vec![42],
+                None,
+                |_| panic!("missing scope"),
+                |_| panic!("missing scope")
+            )
+            .unwrap()
+            .is_none()
+        );
     }
 
     #[test]
-    fn saved_window_hash_rejects_missing_or_other_window_geometry() {
-        let expected = frame().bounds_hash();
-        assert!(saved_window_frame_matches(&frame(), expected));
-        assert!(!saved_window_frame_matches(&frame(), None));
-        assert!(!saved_window_frame_matches(
-            &Rect { x: 50.0, ..frame() },
-            expected
-        ));
+    fn numbered_surface_propagates_bridge_failure() {
+        let unavailable = AdapterError::new(ErrorCode::ActionNotSupported, "window bridge")
+            .with_details(serde_json::json!({"kind": "resolution_window_bridge_unavailable"}));
+        let error = find_numbered_surface(
+            vec![41, 42],
+            Some(42),
+            |_| Ok(vec![]),
+            |_| Err(unavailable.clone()),
+        )
+        .unwrap_err();
+        assert_eq!(error.code, unavailable.code);
+        assert_eq!(error.message, unavailable.message);
+        assert_eq!(error.details, unavailable.details);
     }
 
     #[test]
-    fn missing_ax_window_uses_bounds_checked_fallback() {
+    fn missing_ax_window_uses_number_checked_fallback() {
         let error = AdapterError::new(ErrorCode::ActionNotSupported, "no AX window")
             .with_details(serde_json::json!({"kind": "window_without_accessibility_element"}));
-        for (found, expected) in [
-            (frame(), Some(frame())),
-            (Rect { x: 50.0, ..frame() }, None),
-        ] {
-            let result = resolve_owned_surface::<Rect>(
-                Err(error.clone()),
-                |_| panic!("no owner"),
-                || Ok(frames_match(&found, &frame()).then_some(found)),
-            )
-            .unwrap();
-            assert_eq!(result, expected);
-        }
+        let result = resolve_owned_surface::<i64>(
+            Err(error),
+            |_| panic!("no owner"),
+            || {
+                find_numbered_surface(
+                    vec![41, 42],
+                    Some(42),
+                    |_| Ok(vec![]),
+                    |number| Ok(Some(*number)),
+                )
+            },
+        )
+        .unwrap();
+        assert_eq!(result, Some(42));
     }
 
     #[test]
@@ -188,7 +203,7 @@ mod tests {
             AdapterError::timeout("owner"),
             AdapterError::new(ErrorCode::ActionNotSupported, "other"),
         ] {
-            let result = resolve_owned_surface::<Rect>(
+            let result = resolve_owned_surface::<i64>(
                 Err(error.clone()),
                 |_| panic!("no owner"),
                 || panic!("must propagate"),
