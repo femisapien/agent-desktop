@@ -73,7 +73,9 @@ confidential.
 hard the step would be to reverse. An ordinary step needs 0.70 confidence in its
 target, one rated destructive needs 0.90, and below 0.55 nothing runs. When the
 bar is not met the run stops and names the candidate it would have acted on, so
-you decide instead of it.
+you decide instead of it. By default, a destructive step at target confidence
+0.90 or higher runs. Pass `--confirm-destructive` to `run.mjs` or `act.mjs` to
+stop for confirmation on every step rated destructive, regardless of confidence.
 
 **`--cursor` makes the run watchable.** It starts a session, shows a cursor that
 travels to each element before the operation lands, and turns it off at the end.
