@@ -21,13 +21,13 @@ pub(super) fn candidate_roots(
     let pid = crate::system::process_identity::to_pid_t(entry.process.pid)?;
     let application = element_for_pid(pid);
     if entry.source.source_surface != SnapshotSurface::Window {
-        verify_source_application(&application, entry, context)?;
+        super::resolve_source_app::verify_source_application(&application, entry, context)?;
         return source_surface_scoped_roots(&application, entry, context);
     }
     if source_window_scope_required(entry) && entry.source.source_window_id.is_some() {
         return source_window_scoped_roots(&application, entry, context);
     }
-    verify_source_application(&application, entry, context)?;
+    super::resolve_source_app::verify_source_application(&application, entry, context)?;
     if source_window_scope_required(entry) {
         return source_window_scoped_roots(&application, entry, context);
     }
@@ -73,11 +73,31 @@ fn source_surface_scoped_roots(
         SnapshotSurface::Sheet | SnapshotSurface::Popover | SnapshotSurface::Alert
             if entry.source.source_window_id.is_some() =>
         {
-            match source_window_scoped_roots(application, entry, context)?
-                .roots
-                .into_iter()
-                .next()
-            {
+            let scoped = match source_window_scoped_roots(application, entry, context) {
+                Ok(scoped) => scoped,
+                Err(error)
+                    if error
+                        .details
+                        .as_ref()
+                        .and_then(|details| details["kind"].as_str())
+                        == Some("resolution_window_bridge_miss") =>
+                {
+                    let root = super::window_surface::surface_for_pid_with_bounds_hash(
+                        pid,
+                        entry.source.source_surface,
+                        entry.source.source_window_bounds_hash,
+                        deadline,
+                    )?;
+                    let root = root
+                        .ok_or_else(|| AdapterError::element_not_found("saved source surface"))?;
+                    return Ok(CandidateRoots {
+                        scope_verified: true,
+                        roots: vec![root],
+                    });
+                }
+                Err(error) => return Err(error),
+            };
+            match scoped.roots.into_iter().next() {
                 Some(window) => super::surfaces::surface_in_window(
                     &window,
                     entry.source.source_surface,
@@ -275,44 +295,6 @@ fn window_bridge_miss_error(entry: &RefEntry) -> AdapterError {
         "complete": false,
         "retryable": true,
     }))
-}
-
-#[cfg(target_os = "macos")]
-fn verify_source_application(
-    application: &AXElement,
-    entry: &RefEntry,
-    context: &mut ResolveReadContext,
-) -> Result<(), AdapterError> {
-    let Some(expected) = entry
-        .source
-        .source_app
-        .as_deref()
-        .filter(|name| !name.is_empty())
-    else {
-        return Ok(());
-    };
-    let actual = super::resolve_ax_read::read_string_with_usage(
-        application,
-        "AXTitle",
-        context.deadline,
-        &mut context.usage,
-    )?;
-    if actual
-        .as_deref()
-        .is_some_and(|actual| agent_desktop_core::app_name_matches(actual, expected))
-    {
-        return Ok(());
-    }
-    Err(
-        AdapterError::element_not_found("source application").with_details(serde_json::json!({
-            "kind": "source_process_identity",
-            "pid": entry.process.pid,
-            "expected_app": expected,
-            "actual_app": actual,
-            "complete": true,
-            "retryable": false,
-        })),
-    )
 }
 
 #[cfg(target_os = "macos")]
