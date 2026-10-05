@@ -90,8 +90,7 @@ fn source_surface_scoped_roots(
                             deadline,
                         )
                     })?;
-                    let root = root
-                        .ok_or_else(|| AdapterError::element_not_found("saved source surface"))?;
+                    let root = surface_or_bridge_error(root, error)?;
                     return Ok(CandidateRoots {
                         scope_verified: true,
                         roots: vec![root],
@@ -383,6 +382,10 @@ fn saved_surface_fallback<T>(
     find_surface: impl FnOnce(i64) -> Result<Option<T>, AdapterError>,
 ) -> Result<Option<T>, AdapterError> {
     source_window_number(entry).map_or(Ok(None), find_surface)
+}
+
+fn surface_or_bridge_error<T>(surface: Option<T>, error: AdapterError) -> Result<T, AdapterError> {
+    surface.ok_or(error)
 }
 
 #[cfg(test)]

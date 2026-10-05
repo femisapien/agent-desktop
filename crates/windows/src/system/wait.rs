@@ -119,7 +119,9 @@ fn verify_process_alive(process: &ProcessIdentity) -> Result<(), AdapterError> {
     if forced_process_death::take() {
         return Err(stale_process_error(process));
     }
-    if process_identity::matches_instance(process.pid, &process.instance)? {
+    if process_identity::matches_instance(process.pid, &process.instance)?
+        && process_identity::process_is_running(process.pid)
+    {
         Ok(())
     } else {
         Err(stale_process_error(process))
