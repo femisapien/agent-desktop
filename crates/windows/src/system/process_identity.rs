@@ -94,7 +94,6 @@ pub(crate) fn token_for_pid(pid: ProcessId) -> Result<Option<String>, AdapterErr
     Ok(ProcessIdentity::capture(pid)?.map(ProcessIdentity::token))
 }
 
-/// Treats an unreadable process as running so only a confirmed exit changes liveness.
 #[cfg(target_os = "windows")]
 pub(crate) fn process_is_running(pid: ProcessId) -> bool {
     use windows_sys::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0};
