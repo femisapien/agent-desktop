@@ -233,3 +233,8 @@ node scripts/jev/act.test.mjs
 node scripts/jev/run.test.mjs
 node scripts/jev/run.integration.test.mjs
 ```
+
+Turns retain native `steps`, `post_state` and `details` for the caller. A verified
+`AlreadyInState` step with `outcome: "skipped"` and `delivery: "not_delivered"`
+means no input was needed. Those evidence fields are excluded from model history.
+A failed postcondition keeps `ok: false` and any nested action evidence.
